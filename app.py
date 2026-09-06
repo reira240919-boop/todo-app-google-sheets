@@ -10,6 +10,7 @@ try:
 except ImportError:
     pass
 
+from notifier import post_to_discord
 from sheets import (
     CATEGORIES,
     add_todo,
@@ -93,6 +94,15 @@ def edit(todo_id):
         flash("そのやることは見つかりませんでした", "error")
         return redirect(url_for("index"))
     return render_template("form.html", todo=todo, mode="edit", todo_id=todo_id, categories=CATEGORIES)
+
+
+@app.route("/cron/notify-discord", methods=["GET", "POST"])
+def cron_notify_discord():
+    secret = os.environ.get("CRON_SECRET")
+    if secret and request.headers.get("Authorization") != f"Bearer {secret}":
+        return {"error": "unauthorized"}, 401
+    post_to_discord()
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
