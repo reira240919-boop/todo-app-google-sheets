@@ -19,6 +19,21 @@
       <input type="date" name="due_date" value="{{ todo.due_date if todo else '' }}">
     </label>
 
+    <label>
+      カテゴリ
+      <select name="category">
+        <option value="" {{ "selected" if not (todo and todo.category) else "" }}>未分類</option>
+        {% for c in categories %}
+          <option value="{{ c }}" {{ "selected" if todo and todo.category == c else "" }}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="important-toggle">
+      <input type="checkbox" name="important" {{ "checked" if todo and todo.important == "TRUE" else "" }}>
+      <span>⭐ 重要としてピン留めする</span>
+    </label>
+
     <div class="form-actions">
       <button type="submit">{{ "更新する" if mode == "edit" else "登録する" }}</button>
       <a class="btn-cancel" href="{{ url_for('index') }}">キャンセル</a>

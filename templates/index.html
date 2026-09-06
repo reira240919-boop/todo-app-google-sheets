@@ -1,28 +1,65 @@
 {% extends "base.html" %}
 {% block title %}一覧 | Todoリスト{% endblock %}
+
+{% macro todo_row(todo) %}
+  {% set is_done = todo.done == "TRUE" %}
+  <tr class="{{ 'done-row' if is_done else '' }}">
+    <td class="checkbox-cell">
+      <form method="post" action="{{ url_for('toggle', todo_id=todo.id) }}" class="toggle-form">
+        <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
+      </form>
+    </td>
+    <td class="title-cell">
+      {% if todo.important == "TRUE" and not is_done %}<span class="badge-important">★</span>{% endif %}
+      {{ todo.title }}
+    </td>
+    <td class="content-cell">{{ todo.content }}</td>
+    <td><span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span></td>
+    <td class="due-cell {{ '' if todo.due_date else 'no-date' }}">{{ todo.due_date or "未設定" }}</td>
+    <td><a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a></td>
+  </tr>
+{% endmacro %}
+
+{% macro todo_table(rows) %}
+  <table class="todo-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>タイトル</th>
+        <th>内容</th>
+        <th>カテゴリ</th>
+        <th>期日</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for todo in rows %}{{ todo_row(todo) }}{% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
 {% block content %}
-  {% if todos %}
-    <table class="todo-table">
-      <thead>
-        <tr>
-          <th>タイトル</th>
-          <th>内容</th>
-          <th>期日</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for todo in todos %}
-          <tr>
-            <td>{{ todo.title }}</td>
-            <td class="content-cell">{{ todo.content }}</td>
-            <td>{{ todo.due_date or "-" }}</td>
-            <td><a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
+  <div class="page-header">
+    <h2>やることリスト</h2>
+    <a class="btn-new" href="{{ url_for('add') }}">＋ 新規追加</a>
+  </div>
+
+  {% if not has_any %}
     <p class="empty">まだやることが登録されていません。「＋新規追加」から追加してください。</p>
+  {% else %}
+    {% if important %}
+      <h3 class="section-title important-title">📌 重要</h3>
+      {{ todo_table(important) }}
+    {% endif %}
+
+    {% for label, rows in month_groups %}
+      <h3 class="section-title">{{ label }}</h3>
+      {{ todo_table(rows) }}
+    {% endfor %}
+
+    {% if done %}
+      <h3 class="section-title done-title">✅ 完了</h3>
+      {{ todo_table(done) }}
+    {% endif %}
   {% endif %}
 {% endblock %}
