@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ "編集" if mode == "edit" else "新規追加" }} | Todoリスト{% endblock %}
+{% block content %}
+  <h2>{{ "やることを編集" if mode == "edit" else "やることを新規登録" }}</h2>
+
+  <form method="post" class="todo-form">
+    <label>
+      タイトル <span class="required">必須</span>
+      <input type="text" name="title" value="{{ todo.title if todo else '' }}" required maxlength="200">
+    </label>
+
+    <label>
+      内容
+      <textarea name="content" rows="5">{{ todo.content if todo else '' }}</textarea>
+    </label>
+
+    <label>
+      期日
+      <input type="date" name="due_date" value="{{ todo.due_date if todo else '' }}">
+    </label>
+
+    <div class="form-actions">
+      <button type="submit">{{ "更新する" if mode == "edit" else "登録する" }}</button>
+      <a class="btn-cancel" href="{{ url_for('index') }}">キャンセル</a>
+    </div>
+  </form>
+{% endblock %}

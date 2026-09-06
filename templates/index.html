@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}一覧 | Todoリスト{% endblock %}
+{% block content %}
+  {% if todos %}
+    <table class="todo-table">
+      <thead>
+        <tr>
+          <th>タイトル</th>
+          <th>内容</th>
+          <th>期日</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for todo in todos %}
+          <tr>
+            <td>{{ todo.title }}</td>
+            <td class="content-cell">{{ todo.content }}</td>
+            <td>{{ todo.due_date or "-" }}</td>
+            <td><a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">まだやることが登録されていません。「＋新規追加」から追加してください。</p>
+  {% endif %}
+{% endblock %}
