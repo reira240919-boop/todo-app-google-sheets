@@ -343,6 +343,7 @@ body {
 
 .required {
   display: inline-block;
+  align-self: flex-start;
   background: var(--error-bg);
   color: var(--error-text);
   font-size: 11px;
