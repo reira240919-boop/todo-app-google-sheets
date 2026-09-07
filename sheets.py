@@ -12,8 +12,20 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-HEADERS = ["id", "title", "content", "due_date", "created_at", "done", "category", "important"]
-CATEGORIES = ["仕事", "学習", "プライベート"]
+HEADERS = [
+    "id",
+    "client_name",
+    "content",
+    "due_date",
+    "created_at",
+    "done",
+    "category",
+    "important",
+    "progress",
+    "is_test_case",
+]
+CATEGORIES = ["ショート", "ロング"]
+PROGRESS_STAGES = ["初稿編集中", "初稿提出済み", "修正依頼", "修正分提出済み"]
 NO_DATE_LABEL = "期日未設定"
 
 
@@ -74,19 +86,21 @@ def organize_todos(todos):
     return important, month_groups, done
 
 
-def add_todo(title, content, due_date, category, important):
+def add_todo(client_name, content, due_date, category, important, progress, is_test_case):
     sheet = get_sheet()
     new_id = str(uuid.uuid4())
     sheet.append_row(
         [
             new_id,
-            title,
+            client_name,
             content,
             due_date,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "FALSE",
             category,
             "TRUE" if important else "FALSE",
+            progress,
+            "TRUE" if is_test_case else "FALSE",
         ]
     )
     return new_id
@@ -101,14 +115,17 @@ def get_todo(todo_id):
     return {h: (row[i] if i < len(row) else "") for i, h in enumerate(HEADERS)}
 
 
-def update_todo(todo_id, title, content, due_date, category, important):
+def update_todo(todo_id, client_name, content, due_date, category, important, progress, is_test_case):
     sheet = get_sheet()
     cell = sheet.find(todo_id, in_column=1)
     if not cell:
         return False
     row = cell.row
-    sheet.update(f"B{row}:D{row}", [[title, content, due_date]])
-    sheet.update(f"G{row}:H{row}", [[category, "TRUE" if important else "FALSE"]])
+    sheet.update(f"B{row}:D{row}", [[client_name, content, due_date]])
+    sheet.update(
+        f"G{row}:J{row}",
+        [[category, "TRUE" if important else "FALSE", progress, "TRUE" if is_test_case else "FALSE"]],
+    )
     return True
 
 

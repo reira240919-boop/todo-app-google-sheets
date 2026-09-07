@@ -9,12 +9,16 @@
         <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
       </form>
     </td>
-    <td class="title-cell" data-label="タイトル">
+    <td class="client-cell" data-label="クライアント名">
       {% if todo.important == "TRUE" and not is_done %}<span class="badge-important">★</span>{% endif %}
-      {{ todo.title }}
+      {{ todo.client_name }}
     </td>
     <td class="content-cell" data-label="内容">{{ todo.content }}</td>
-    <td data-label="カテゴリ"><span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span></td>
+    <td data-label="カテゴリ">
+      <span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span>
+      {% if todo.is_test_case == "TRUE" %}<span class="badge-test">🧪 テスト案件</span>{% endif %}
+    </td>
+    <td data-label="進捗"><span class="badge-progress" data-stage="{{ todo.progress }}">{{ todo.progress or "未設定" }}</span></td>
     <td class="due-cell {{ '' if todo.due_date else 'no-date' }}" data-label="期日">{{ todo.due_date or "未設定" }}</td>
     <td class="actions-cell">
       <a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a>
@@ -30,9 +34,10 @@
     <thead>
       <tr>
         <th></th>
-        <th>タイトル</th>
+        <th>クライアント名</th>
         <th>内容</th>
         <th>カテゴリ</th>
+        <th>進捗</th>
         <th>期日</th>
         <th></th>
       </tr>

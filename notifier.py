@@ -8,8 +8,10 @@ from sheets import get_all_todos, organize_todos
 def _format_line(todo):
     due = todo.get("due_date") or "期日未設定"
     category = todo.get("category") or "未分類"
+    progress = todo.get("progress") or "進捗未設定"
     mark = "⭐ " if todo.get("important") == "TRUE" else ""
-    return f"・{mark}{todo['title']}（{due}／{category}）"
+    test_mark = "🧪" if todo.get("is_test_case") == "TRUE" else ""
+    return f"・{mark}{todo['client_name']}{test_mark}（{due}／{category}／{progress}）"
 
 
 def build_message():

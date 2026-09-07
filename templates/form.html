@@ -5,8 +5,8 @@
 
   <form method="post" class="todo-form">
     <label>
-      タイトル <span class="required">必須</span>
-      <input type="text" name="title" value="{{ todo.title if todo else '' }}" required maxlength="200">
+      クライアント名 <span class="required">必須</span>
+      <input type="text" name="client_name" value="{{ todo.client_name if todo else '' }}" required maxlength="200">
     </label>
 
     <label>
@@ -19,20 +19,38 @@
       <input type="date" name="due_date" value="{{ todo.due_date if todo else '' }}">
     </label>
 
-    <label>
-      カテゴリ
-      <select name="category">
-        <option value="" {{ "selected" if not (todo and todo.category) else "" }}>未分類</option>
-        {% for c in categories %}
-          <option value="{{ c }}" {{ "selected" if todo and todo.category == c else "" }}>{{ c }}</option>
-        {% endfor %}
-      </select>
-    </label>
+    <div class="form-row">
+      <label>
+        カテゴリ
+        <select name="category">
+          <option value="" {{ "selected" if not (todo and todo.category) else "" }}>未分類</option>
+          {% for c in categories %}
+            <option value="{{ c }}" {{ "selected" if todo and todo.category == c else "" }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
 
-    <label class="important-toggle">
-      <input type="checkbox" name="important" {{ "checked" if todo and todo.important == "TRUE" else "" }}>
-      <span>⭐ 重要としてピン留めする</span>
-    </label>
+      <label>
+        進捗情報
+        <select name="progress">
+          {% for p in progress_stages %}
+            <option value="{{ p }}" {{ "selected" if todo and todo.progress == p else "" }}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <label class="important-toggle">
+        <input type="checkbox" name="important" {{ "checked" if todo and todo.important == "TRUE" else "" }}>
+        <span>⭐ 重要としてピン留めする</span>
+      </label>
+
+      <label class="test-toggle">
+        <input type="checkbox" name="is_test_case" {{ "checked" if todo and todo.is_test_case == "TRUE" else "" }}>
+        <span>🧪 テスト案件にする</span>
+      </label>
+    </div>
 
     <div class="form-actions">
       <button type="submit">{{ "更新する" if mode == "edit" else "登録する" }}</button>

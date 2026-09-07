@@ -168,19 +168,57 @@ body {
   white-space: nowrap;
 }
 
-.badge-category[data-category="仕事"] {
+.badge-category[data-category="ショート"] {
+  background: #dff3f1;
+  color: #157d6f;
+}
+
+.badge-category[data-category="ロング"] {
+  background: #ece3f7;
+  color: #6a3fa1;
+}
+
+.badge-progress {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  white-space: nowrap;
+}
+
+.badge-progress[data-stage="初稿編集中"] {
   background: #e3ecf4;
   color: #386890;
 }
 
-.badge-category[data-category="学習"] {
-  background: #e4f4e8;
-  color: #2f8a4c;
+.badge-progress[data-stage="初稿提出済み"] {
+  background: #dff3f1;
+  color: #157d6f;
 }
 
-.badge-category[data-category="プライベート"] {
+.badge-progress[data-stage="修正依頼"] {
+  background: #fdecec;
+  color: #c0392b;
+}
+
+.badge-progress[data-stage="修正分提出済み"] {
+  background: #e3f8ef;
+  color: #1a7f4b;
+}
+
+.badge-test {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
   background: #f6e8f7;
   color: #9b3fa1;
+  white-space: nowrap;
+  margin-left: 4px;
 }
 
 .todo-table {
@@ -235,7 +273,7 @@ body {
   cursor: pointer;
 }
 
-.title-cell {
+.client-cell {
   font-weight: 600;
 }
 
@@ -243,7 +281,7 @@ body {
   opacity: 0.55;
 }
 
-.done-row .title-cell,
+.done-row .client-cell,
 .done-row .content-cell {
   text-decoration: line-through;
 }
@@ -380,7 +418,19 @@ body {
   background: #fbfeff;
 }
 
-.important-toggle {
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.important-toggle, .test-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -395,7 +445,7 @@ body {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.important-toggle input {
+.important-toggle input, .test-toggle input {
   display: none;
 }
 
@@ -403,6 +453,12 @@ body {
   background: #fff4d6;
   border-color: #f5b400;
   color: #8a6300;
+}
+
+.test-toggle:has(input:checked) {
+  background: #f6e8f7;
+  border-color: #b855c2;
+  color: #7a2f83;
 }
 
 .form-actions {
@@ -444,6 +500,10 @@ body {
 @media (max-width: 640px) {
   .container {
     padding: 0 12px 40px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
   }
 
   .todo-table thead {

@@ -13,6 +13,7 @@ except ImportError:
 from notifier import post_to_discord
 from sheets import (
     CATEGORIES,
+    PROGRESS_STAGES,
     add_todo,
     delete_todo,
     get_all_todos,
@@ -38,25 +39,33 @@ def index():
 @app.route("/add", methods=["GET", "POST"])
 def add():
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
+        client_name = request.form.get("client_name", "").strip()
         content = request.form.get("content", "").strip()
         due_date = request.form.get("due_date", "").strip()
         category = request.form.get("category", "").strip()
         important = request.form.get("important") == "on"
-        if not title:
-            flash("タイトルは必須です", "error")
+        progress = request.form.get("progress", "").strip()
+        is_test_case = request.form.get("is_test_case") == "on"
+        if not client_name:
+            flash("クライアント名は必須です", "error")
             todo_data = {
-                "title": title,
+                "client_name": client_name,
                 "content": content,
                 "due_date": due_date,
                 "category": category,
                 "important": "TRUE" if important else "FALSE",
+                "progress": progress,
+                "is_test_case": "TRUE" if is_test_case else "FALSE",
             }
-            return render_template("form.html", todo=todo_data, mode="add", categories=CATEGORIES)
-        add_todo(title, content, due_date, category, important)
+            return render_template(
+                "form.html", todo=todo_data, mode="add", categories=CATEGORIES, progress_stages=PROGRESS_STAGES
+            )
+        add_todo(client_name, content, due_date, category, important, progress, is_test_case)
         flash("登録しました", "success")
         return redirect(url_for("index"))
-    return render_template("form.html", todo=None, mode="add", categories=CATEGORIES)
+    return render_template(
+        "form.html", todo=None, mode="add", categories=CATEGORIES, progress_stages=PROGRESS_STAGES
+    )
 
 
 @app.route("/toggle/<todo_id>", methods=["POST"])
@@ -76,24 +85,33 @@ def delete(todo_id):
 @app.route("/edit/<todo_id>", methods=["GET", "POST"])
 def edit(todo_id):
     if request.method == "POST":
-        title = request.form.get("title", "").strip()
+        client_name = request.form.get("client_name", "").strip()
         content = request.form.get("content", "").strip()
         due_date = request.form.get("due_date", "").strip()
         category = request.form.get("category", "").strip()
         important = request.form.get("important") == "on"
-        if not title:
-            flash("タイトルは必須です", "error")
+        progress = request.form.get("progress", "").strip()
+        is_test_case = request.form.get("is_test_case") == "on"
+        if not client_name:
+            flash("クライアント名は必須です", "error")
             todo_data = {
-                "title": title,
+                "client_name": client_name,
                 "content": content,
                 "due_date": due_date,
                 "category": category,
                 "important": "TRUE" if important else "FALSE",
+                "progress": progress,
+                "is_test_case": "TRUE" if is_test_case else "FALSE",
             }
             return render_template(
-                "form.html", todo=todo_data, mode="edit", todo_id=todo_id, categories=CATEGORIES
+                "form.html",
+                todo=todo_data,
+                mode="edit",
+                todo_id=todo_id,
+                categories=CATEGORIES,
+                progress_stages=PROGRESS_STAGES,
             )
-        update_todo(todo_id, title, content, due_date, category, important)
+        update_todo(todo_id, client_name, content, due_date, category, important, progress, is_test_case)
         flash("更新しました", "success")
         return redirect(url_for("index"))
 
@@ -101,7 +119,14 @@ def edit(todo_id):
     if todo is None:
         flash("そのやることは見つかりませんでした", "error")
         return redirect(url_for("index"))
-    return render_template("form.html", todo=todo, mode="edit", todo_id=todo_id, categories=CATEGORIES)
+    return render_template(
+        "form.html",
+        todo=todo,
+        mode="edit",
+        todo_id=todo_id,
+        categories=CATEGORIES,
+        progress_stages=PROGRESS_STAGES,
+    )
 
 
 @app.route("/cron/notify-discord", methods=["GET", "POST"])
