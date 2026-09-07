@@ -510,13 +510,18 @@ body {
     display: none;
   }
 
-  .todo-table, .todo-table tbody, .todo-table tr, .todo-table td {
+  .todo-table, .todo-table tbody {
     display: block;
     width: 100%;
   }
 
   .todo-table tr {
-    padding: 14px 16px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 6px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--border);
   }
 
@@ -525,29 +530,38 @@ body {
   }
 
   .todo-table td {
-    padding: 5px 0;
+    display: block;
+    width: auto;
+    padding: 0;
     border-bottom: none;
   }
 
-  .todo-table td[data-label]::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--accent-dark);
-    margin-bottom: 2px;
+  .checkbox-cell {
+    flex: 0 0 auto;
+  }
+
+  .client-cell {
+    flex: 1 1 auto;
+    min-width: 55%;
   }
 
   .content-cell {
+    flex: 1 1 100%;
     max-width: none;
   }
 
-  .checkbox-cell {
-    padding-bottom: 8px;
+  .category-cell, .progress-cell, .due-cell {
+    flex: 0 0 auto;
+  }
+
+  .due-cell::before {
+    content: "📅 ";
   }
 
   .actions-cell {
-    padding-top: 10px;
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
   }
 }
 

@@ -14,11 +14,11 @@
       {{ todo.client_name }}
     </td>
     <td class="content-cell" data-label="内容">{{ todo.content }}</td>
-    <td data-label="カテゴリ">
+    <td class="category-cell" data-label="カテゴリ">
       <span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span>
       {% if todo.is_test_case == "TRUE" %}<span class="badge-test">🧪 テスト案件</span>{% endif %}
     </td>
-    <td data-label="進捗"><span class="badge-progress" data-stage="{{ todo.progress }}">{{ todo.progress or "未設定" }}</span></td>
+    <td class="progress-cell" data-label="進捗"><span class="badge-progress" data-stage="{{ todo.progress }}">{{ todo.progress or "未設定" }}</span></td>
     <td class="due-cell {{ '' if todo.due_date else 'no-date' }}" data-label="期日">{{ todo.due_date or "未設定" }}</td>
     <td class="actions-cell">
       <a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a>
