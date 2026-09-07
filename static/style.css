@@ -440,6 +440,56 @@ body {
   color: var(--text);
 }
 
+@media (max-width: 640px) {
+  .container {
+    padding: 0 12px 40px;
+  }
+
+  .todo-table thead {
+    display: none;
+  }
+
+  .todo-table, .todo-table tbody, .todo-table tr, .todo-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .todo-table tr {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .todo-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .todo-table td {
+    padding: 5px 0;
+    border-bottom: none;
+  }
+
+  .todo-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin-bottom: 2px;
+  }
+
+  .content-cell {
+    max-width: none;
+  }
+
+  .checkbox-cell {
+    padding-bottom: 8px;
+  }
+
+  .actions-cell {
+    padding-top: 10px;
+  }
+}
+
 .todo-form button:disabled {
   opacity: 0.7;
   cursor: not-allowed;

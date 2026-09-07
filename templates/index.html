@@ -9,13 +9,13 @@
         <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
       </form>
     </td>
-    <td class="title-cell">
+    <td class="title-cell" data-label="タイトル">
       {% if todo.important == "TRUE" and not is_done %}<span class="badge-important">★</span>{% endif %}
       {{ todo.title }}
     </td>
-    <td class="content-cell">{{ todo.content }}</td>
-    <td><span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span></td>
-    <td class="due-cell {{ '' if todo.due_date else 'no-date' }}">{{ todo.due_date or "未設定" }}</td>
+    <td class="content-cell" data-label="内容">{{ todo.content }}</td>
+    <td data-label="カテゴリ"><span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span></td>
+    <td class="due-cell {{ '' if todo.due_date else 'no-date' }}" data-label="期日">{{ todo.due_date or "未設定" }}</td>
     <td class="actions-cell">
       <a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a>
       <form method="post" action="{{ url_for('delete', todo_id=todo.id) }}" class="delete-form" data-confirm="削除しますか？">
