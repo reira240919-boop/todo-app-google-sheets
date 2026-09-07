@@ -119,3 +119,12 @@ def set_done(todo_id, done):
         return False
     sheet.update(f"F{cell.row}", [["TRUE" if done else "FALSE"]])
     return True
+
+
+def delete_todo(todo_id):
+    sheet = get_sheet()
+    cell = sheet.find(todo_id, in_column=1)
+    if not cell:
+        return False
+    sheet.delete_rows(cell.row)
+    return True

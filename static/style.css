@@ -282,6 +282,34 @@ body {
   color: var(--accent-text);
 }
 
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.delete-form {
+  display: inline-flex;
+}
+
+.btn-delete {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-delete:hover {
+  background: var(--error-text);
+  color: #ffffff;
+}
+
 .empty {
   color: var(--muted);
   padding: 48px 24px;

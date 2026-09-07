@@ -14,6 +14,7 @@ from notifier import post_to_discord
 from sheets import (
     CATEGORIES,
     add_todo,
+    delete_todo,
     get_all_todos,
     get_todo,
     organize_todos,
@@ -62,6 +63,13 @@ def add():
 def toggle(todo_id):
     done = request.form.get("done") == "on"
     set_done(todo_id, done)
+    return redirect(url_for("index"))
+
+
+@app.route("/delete/<todo_id>", methods=["POST"])
+def delete(todo_id):
+    delete_todo(todo_id)
+    flash("削除しました", "success")
     return redirect(url_for("index"))
 
 

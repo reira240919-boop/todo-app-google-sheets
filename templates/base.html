@@ -36,7 +36,12 @@
       var overlay = document.getElementById("loading-overlay");
 
       document.querySelectorAll("form").forEach(function (form) {
-        form.addEventListener("submit", function () {
+        form.addEventListener("submit", function (e) {
+          var confirmMessage = form.getAttribute("data-confirm");
+          if (confirmMessage && !window.confirm(confirmMessage)) {
+            e.preventDefault();
+            return;
+          }
           if (typeof form.reportValidity === "function" && !form.reportValidity()) {
             return;
           }
