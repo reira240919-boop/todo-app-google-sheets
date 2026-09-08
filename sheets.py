@@ -1,11 +1,13 @@
 import json
 import os
+import time
 import uuid
 from collections import OrderedDict
 from datetime import datetime
 
 import gspread
 from google.oauth2.service_account import Credentials
+from gspread.exceptions import APIError
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -39,14 +41,24 @@ def _get_client():
     return gspread.authorize(creds)
 
 
-def get_sheet():
+def get_sheet(retries=3, delay=1):
+    """Googleスプレッドシート側の一時的な503エラーに備えて数回リトライする"""
     client = _get_client()
     spreadsheet_id = os.environ["SPREADSHEET_ID"]
-    spreadsheet = client.open_by_key(spreadsheet_id)
     worksheet_name = os.environ.get("WORKSHEET_NAME")
-    if worksheet_name:
-        return spreadsheet.worksheet(worksheet_name)
-    return spreadsheet.sheet1
+
+    last_error = None
+    for attempt in range(retries):
+        try:
+            spreadsheet = client.open_by_key(spreadsheet_id)
+            if worksheet_name:
+                return spreadsheet.worksheet(worksheet_name)
+            return spreadsheet.sheet1
+        except APIError as e:
+            last_error = e
+            if attempt < retries - 1:
+                time.sleep(delay)
+    raise last_error
 
 
 def get_all_todos():
