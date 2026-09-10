@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
 try:
     from dotenv import load_dotenv
@@ -19,6 +19,7 @@ from sheets import (
     get_all_todos,
     get_todo,
     organize_todos,
+    reorder_todos,
     set_done,
     update_todo,
 )
@@ -73,6 +74,16 @@ def toggle(todo_id):
     done = request.form.get("done") == "on"
     set_done(todo_id, done)
     return redirect(url_for("index"))
+
+
+@app.route("/reorder", methods=["POST"])
+def reorder():
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"status": "error", "message": "invalid ids"}), 400
+    reorder_todos(ids)
+    return jsonify({"status": "ok"})
 
 
 @app.route("/delete/<todo_id>", methods=["POST"])

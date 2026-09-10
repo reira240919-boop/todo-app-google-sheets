@@ -257,6 +257,46 @@ body {
   border-bottom: none;
 }
 
+.drag-handle-cell {
+  width: 32px;
+  text-align: center;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.drag-handle:hover {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+}
+
+.sortable-chosen .drag-handle,
+.sortable-drag .drag-handle {
+  cursor: grabbing;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.sortable-drag {
+  background: var(--card);
+  box-shadow: 0 6px 18px rgba(70, 130, 180, 0.25);
+}
+
 .checkbox-cell {
   width: 40px;
   text-align: center;
@@ -534,6 +574,11 @@ body {
     width: auto;
     padding: 0;
     border-bottom: none;
+  }
+
+  .drag-handle-cell {
+    flex: 0 0 auto;
+    order: -1;
   }
 
   .checkbox-cell {

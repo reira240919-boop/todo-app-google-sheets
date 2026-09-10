@@ -25,6 +25,7 @@ HEADERS = [
     "important",
     "progress",
     "is_test_case",
+    "sort_order",
 ]
 CATEGORIES = ["ショート", "ロング"]
 PROGRESS_STAGES = ["初稿編集中", "初稿提出済み", "修正依頼", "修正分提出済み"]
@@ -68,6 +69,17 @@ def get_all_todos():
     return records
 
 
+def _order_key(t):
+    """手動並び替え(sort_order)があれば優先し、なければ期日順にする"""
+    order = (t.get("sort_order") or "").strip()
+    if order:
+        try:
+            return (0, float(order))
+        except ValueError:
+            pass
+    return (1, t.get("due_date") or "9999-99-99")
+
+
 def organize_todos(todos):
     """重要(未完了) / 月ごと(未完了) / 完了 の3グループに分ける"""
     important, others, done = [], [], []
@@ -79,7 +91,7 @@ def organize_todos(todos):
         else:
             others.append(t)
 
-    important.sort(key=lambda t: t.get("due_date") or "9999-99-99")
+    important.sort(key=_order_key)
     done.sort(key=lambda t: t.get("due_date") or "9999-99-99")
 
     groups = OrderedDict()
@@ -87,6 +99,8 @@ def organize_todos(todos):
         due = t.get("due_date")
         key = due[:7] if due else NO_DATE_LABEL
         groups.setdefault(key, []).append(t)
+    for rows in groups.values():
+        rows.sort(key=_order_key)
 
     month_groups = []
     for key in sorted(k for k in groups if k != NO_DATE_LABEL):
@@ -113,6 +127,7 @@ def add_todo(client_name, content, due_date, category, important, progress, is_t
             "TRUE" if important else "FALSE",
             progress,
             "TRUE" if is_test_case else "FALSE",
+            "",
         ]
     )
     return new_id
@@ -147,6 +162,22 @@ def set_done(todo_id, done):
     if not cell:
         return False
     sheet.update(f"F{cell.row}", [["TRUE" if done else "FALSE"]])
+    return True
+
+
+def reorder_todos(ordered_ids):
+    """ドラッグ&ドロップで決めた新しい並び順を sort_order 列にまとめて保存する"""
+    sheet = get_sheet()
+    id_column = sheet.col_values(1)
+    id_to_row = {value: i + 1 for i, value in enumerate(id_column) if i > 0}
+
+    updates = []
+    for index, todo_id in enumerate(ordered_ids):
+        row = id_to_row.get(todo_id)
+        if row:
+            updates.append({"range": f"K{row}", "values": [[index]]})
+    if updates:
+        sheet.batch_update(updates)
     return True
 
 

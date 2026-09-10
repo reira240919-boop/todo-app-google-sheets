@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}一覧 | Todoリスト{% endblock %}
 
-{% macro todo_row(todo) %}
+{% macro todo_row(todo, sortable=False) %}
   {% set is_done = todo.done == "TRUE" %}
-  <tr class="{{ 'done-row' if is_done else '' }}">
+  <tr class="{{ 'done-row' if is_done else '' }}" data-id="{{ todo.id }}">
+    {% if sortable %}
+      <td class="drag-handle-cell"><span class="drag-handle" title="長押しでドラッグして移動">⠿</span></td>
+    {% endif %}
     <td class="checkbox-cell">
       <form method="post" action="{{ url_for('toggle', todo_id=todo.id) }}" class="toggle-form">
         <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
@@ -29,10 +32,11 @@
   </tr>
 {% endmacro %}
 
-{% macro todo_table(rows) %}
+{% macro todo_table(rows, sortable=False) %}
   <table class="todo-table">
     <thead>
       <tr>
+        {% if sortable %}<th></th>{% endif %}
         <th></th>
         <th>クライアント名</th>
         <th>内容</th>
@@ -42,8 +46,8 @@
         <th></th>
       </tr>
     </thead>
-    <tbody>
-      {% for todo in rows %}{{ todo_row(todo) }}{% endfor %}
+    <tbody class="{{ 'sortable-list' if sortable else '' }}">
+      {% for todo in rows %}{{ todo_row(todo, sortable) }}{% endfor %}
     </tbody>
   </table>
 {% endmacro %}
@@ -59,12 +63,12 @@
   {% else %}
     {% if important %}
       <h3 class="section-title important-title">📌 重要</h3>
-      {{ todo_table(important) }}
+      {{ todo_table(important, sortable=True) }}
     {% endif %}
 
     {% for label, rows in month_groups %}
       <h3 class="section-title">{{ label }}</h3>
-      {{ todo_table(rows) }}
+      {{ todo_table(rows, sortable=True) }}
     {% endfor %}
 
     {% if done %}
@@ -72,4 +76,35 @@
       {{ todo_table(done) }}
     {% endif %}
   {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+  <script>
+    (function () {
+      if (typeof Sortable === "undefined") return;
+
+      document.querySelectorAll("tbody.sortable-list").forEach(function (tbody) {
+        Sortable.create(tbody, {
+          handle: ".drag-handle",
+          animation: 150,
+          delay: 300,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 10,
+          onEnd: function (evt) {
+            var ids = Array.from(evt.to.querySelectorAll("tr")).map(function (tr) {
+              return tr.dataset.id;
+            });
+            fetch("{{ url_for('reorder') }}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: ids }),
+            }).catch(function () {
+              location.reload();
+            });
+          },
+        });
+      });
+    })();
+  </script>
 {% endblock %}
