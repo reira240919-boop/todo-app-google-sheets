@@ -4,9 +4,6 @@
 {% macro todo_row(todo, sortable=False) %}
   {% set is_done = todo.done == "TRUE" %}
   <tr class="{{ 'done-row' if is_done else '' }}" data-id="{{ todo.id }}">
-    {% if sortable %}
-      <td class="drag-handle-cell"><span class="drag-handle" title="長押しでドラッグして移動">⠿</span></td>
-    {% endif %}
     <td class="checkbox-cell">
       <form method="post" action="{{ url_for('toggle', todo_id=todo.id) }}" class="toggle-form">
         <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
@@ -29,6 +26,9 @@
         <button type="submit" class="btn-delete">削除</button>
       </form>
     </td>
+    {% if sortable %}
+      <td class="drag-handle-cell"><span class="drag-handle" title="長押しでドラッグして移動">⠿</span></td>
+    {% endif %}
   </tr>
 {% endmacro %}
 
@@ -36,7 +36,6 @@
   <table class="todo-table">
     <thead>
       <tr>
-        {% if sortable %}<th></th>{% endif %}
         <th></th>
         <th>クライアント名</th>
         <th>内容</th>
@@ -44,6 +43,7 @@
         <th>進捗</th>
         <th>期日</th>
         <th></th>
+        {% if sortable %}<th></th>{% endif %}
       </tr>
     </thead>
     <tbody class="{{ 'sortable-list' if sortable else '' }}">

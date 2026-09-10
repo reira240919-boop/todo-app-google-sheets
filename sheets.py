@@ -71,7 +71,10 @@ def get_all_todos():
 
 def _order_key(t):
     """手動並び替え(sort_order)があれば優先し、なければ期日順にする"""
-    order = (t.get("sort_order") or "").strip()
+    order = t.get("sort_order")
+    if isinstance(order, (int, float)):
+        return (0, float(order))
+    order = (order or "").strip()
     if order:
         try:
             return (0, float(order))

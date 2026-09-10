@@ -576,27 +576,31 @@ body {
     border-bottom: none;
   }
 
-  .drag-handle-cell {
-    flex: 0 0 auto;
-    order: -1;
-  }
-
   .checkbox-cell {
     flex: 0 0 auto;
+    order: 1;
   }
 
   .client-cell {
     flex: 1 1 auto;
     min-width: 55%;
+    order: 2;
+  }
+
+  .drag-handle-cell {
+    flex: 0 0 auto;
+    order: 3;
   }
 
   .content-cell {
     flex: 1 1 100%;
     max-width: none;
+    order: 4;
   }
 
   .category-cell, .progress-cell, .due-cell {
     flex: 0 0 auto;
+    order: 5;
   }
 
   .due-cell::before {
@@ -607,6 +611,7 @@ body {
     flex: 1 1 100%;
     justify-content: flex-end;
     margin-top: 4px;
+    order: 6;
   }
 }
 
