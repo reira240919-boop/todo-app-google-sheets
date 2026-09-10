@@ -235,11 +235,11 @@ body {
 /* table-layout: fixed のときは列幅がこの1行目(th)基準で決まるため、
    ここで日本語テキスト列(内容)が極端に潰れて縦に折り返されるのを防ぐ */
 .todo-table th.checkbox-cell { width: 40px; }
-.todo-table th.client-cell { width: 110px; }
+.todo-table th.client-cell { width: 98px; }
 .todo-table th.content-cell { width: auto; }
-.todo-table th.category-cell { width: 96px; }
-.todo-table th.progress-cell { width: 104px; }
-.todo-table th.due-cell { width: 112px; }
+.todo-table th.category-cell { width: 88px; }
+.todo-table th.progress-cell { width: 116px; }
+.todo-table th.due-cell { width: 150px; }
 .todo-table th.actions-cell { width: 172px; }
 .todo-table th.drag-handle-cell { width: 44px; }
 
