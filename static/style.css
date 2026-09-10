@@ -223,12 +223,32 @@ body {
 
 .todo-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   background: var(--card);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(70, 130, 180, 0.15);
   margin-bottom: 8px;
+}
+
+/* table-layout: fixed のときは列幅がこの1行目(th)基準で決まるため、
+   ここで日本語テキスト列(内容)が極端に潰れて縦に折り返されるのを防ぐ */
+.todo-table th.checkbox-cell { width: 40px; }
+.todo-table th.client-cell { width: 110px; }
+.todo-table th.content-cell { width: auto; }
+.todo-table th.category-cell { width: 96px; }
+.todo-table th.progress-cell { width: 104px; }
+.todo-table th.due-cell { width: 112px; }
+.todo-table th.actions-cell { width: 172px; }
+.todo-table th.drag-handle-cell { width: 44px; }
+
+/* 標準の左右16pxパディングだと44px幅の中に⠿アイコン(26px)が収まらず
+   テーブル右端で見切れるため、この列だけパディングを詰める */
+.todo-table th.drag-handle-cell,
+.todo-table td.drag-handle-cell {
+  padding-left: 4px;
+  padding-right: 8px;
 }
 
 .todo-table th, .todo-table td {
@@ -361,7 +381,7 @@ body {
   color: var(--accent-text);
 }
 
-.actions-cell {
+td.actions-cell {
   display: flex;
   gap: 8px;
   align-items: center;

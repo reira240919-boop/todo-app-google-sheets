@@ -36,14 +36,14 @@
   <table class="todo-table">
     <thead>
       <tr>
-        <th></th>
-        <th>クライアント名</th>
-        <th>内容</th>
-        <th>カテゴリ</th>
-        <th>進捗</th>
-        <th>期日</th>
-        <th></th>
-        {% if sortable %}<th></th>{% endif %}
+        <th class="checkbox-cell"></th>
+        <th class="client-cell">クライアント名</th>
+        <th class="content-cell">内容</th>
+        <th class="category-cell">カテゴリ</th>
+        <th class="progress-cell">進捗</th>
+        <th class="due-cell">期日</th>
+        <th class="actions-cell"></th>
+        {% if sortable %}<th class="drag-handle-cell"></th>{% endif %}
       </tr>
     </thead>
     <tbody class="{{ 'sortable-list' if sortable else '' }}">
