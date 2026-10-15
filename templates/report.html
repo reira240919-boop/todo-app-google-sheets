@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}日報 | 毎日やること{% endblock %}
+{% block content %}
+  <div class="report-date-card">
+    <span class="report-date-label">日報対象日</span>
+    <span class="report-date-value">{{ report_date_label }}</span>
+  </div>
+
+  <section class="day-section">
+    <div class="section-head">
+      <h3 class="section-title">1日の振り返り</h3>
+    </div>
+    <form method="post" action="{{ url_for('report_reflection') }}" class="plain-form">
+      <textarea name="reflection" rows="5" maxlength="3000" placeholder="今日の振り返りを書く">{{ reflection }}</textarea>
+      <div class="fixed-actions">
+        <button type="submit" class="btn-save">保存</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="day-section">
+    <div class="section-head">
+      <h3 class="section-title">日報プレビュー</h3>
+      <button type="button" class="btn-save" id="copy-button">クリップボードにコピー</button>
+    </div>
+    <p class="copy-message" id="copy-message" hidden></p>
+    <textarea class="report-text" id="report-text" readonly rows="24">{{ report_text }}</textarea>
+    <p class="section-note section-note-after">今月の目標・明日意識することは <a href="{{ url_for('settings') }}">設定</a> で編集できます。</p>
+  </section>
+
+  <section class="day-section submit-section">
+    <p class="section-note">LINE に送ったら提出してください。日報の日が翌日に進み、終わっていないタスクは翌日にコピーされます。</p>
+    <form method="post" action="{{ url_for('report_submit') }}"
+          data-confirm="日報を提出しますか？&#10;日報の日が翌日に進みます（元に戻せません）。">
+      <button type="submit" class="btn-submit">日報を提出する</button>
+    </form>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      var button = document.getElementById("copy-button");
+      var textarea = document.getElementById("report-text");
+      var message = document.getElementById("copy-message");
+
+      function show(text, isError) {
+        message.textContent = text;
+        message.className = "copy-message " + (isError ? "flash flash-error" : "flash flash-success");
+        message.hidden = false;
+      }
+
+      button.addEventListener("click", function () {
+        if (!navigator.clipboard) {
+          textarea.select();
+          show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+          return;
+        }
+        navigator.clipboard.writeText(textarea.value).then(
+          function () {
+            show("コピーしました", false);
+          },
+          function () {
+            textarea.select();
+            show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+          }
+        );
+      });
+    })();
+  </script>
+{% endblock %}

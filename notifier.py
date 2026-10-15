@@ -2,34 +2,28 @@ import os
 
 import requests
 
-from sheets import get_all_todos, organize_todos
+from sheets import format_duration, get_all_tasks, get_report_date, organize_tasks
 
 
-def _format_line(todo):
-    due = todo.get("due_date") or "期日未設定"
-    category = todo.get("category") or "未分類"
-    progress = todo.get("progress") or "進捗未設定"
-    mark = "⭐ " if todo.get("important") == "TRUE" else ""
-    test_mark = "🧪" if todo.get("is_test_case") == "TRUE" else ""
-    return f"・{mark}{todo['client_name']}{test_mark}（{due}／{category}／{progress}）"
+def _format_line(task):
+    mark = "✅ " if task["done"] else ""
+    duration = f"（{format_duration(task['duration'])}）" if task["duration"] else ""
+    return f"・{mark}{task['category']}➡︎{task['detail']}{duration}"
 
 
 def build_message():
-    todos = get_all_todos()
-    important, month_groups, _done = organize_todos(todos)
+    report_date = get_report_date()
+    today_tasks, _tomorrow, if_time_tasks = organize_tasks(get_all_tasks(), report_date)
 
-    if not important and not any(rows for _, rows in month_groups):
-        return "📋 **今日のTodoリスト**\n未完了のやることはありません🎉"
+    lines = [f"📋 **{report_date.month}/{report_date.day} のやること**"]
+    if today_tasks:
+        lines.extend(_format_line(t) for t in today_tasks)
+    else:
+        lines.append("今日のタスクはまだありません")
 
-    lines = ["📋 **今日のTodoリスト**"]
-
-    if important:
-        lines.append("\n📌 **重要**")
-        lines.extend(_format_line(t) for t in important)
-
-    for label, rows in month_groups:
-        lines.append(f"\n🗓 **{label}**")
-        lines.extend(_format_line(t) for t in rows)
+    if if_time_tasks:
+        lines.append("\n⏳ **時間があれば**")
+        lines.extend(_format_line(t) for t in if_time_tasks)
 
     return "\n".join(lines)
 

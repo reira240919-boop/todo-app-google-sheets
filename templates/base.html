@@ -3,19 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Todoリスト{% endblock %}</title>
+  <title>{% block title %}毎日やること{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="topbar">
-    <h1>Todoリスト</h1>
+    <h1>毎日やること</h1>
     <nav>
-      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">一覧</a>
-      <a href="{{ url_for('add') }}" class="{{ 'active' if request.endpoint == 'add' else '' }}">＋新規追加</a>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">ホーム</a>
+      <a href="{{ url_for('add') }}" class="{{ 'active' if request.endpoint == 'add' else '' }}">＋追加</a>
+      <a href="{{ url_for('report') }}" class="{{ 'active' if request.endpoint == 'report' else '' }}">日報</a>
+      <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}">設定</a>
     </nav>
   </header>
 
-  <main class="container">
+  <main class="container {% block container_class %}{% endblock %}">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}

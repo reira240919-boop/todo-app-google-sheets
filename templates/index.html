@@ -1,99 +1,177 @@
 {% extends "base.html" %}
-{% block title %}一覧 | Todoリスト{% endblock %}
+{% block title %}ホーム | 毎日やること{% endblock %}
 
-{% macro todo_row(todo, sortable=False) %}
-  {% set is_done = todo.done == "TRUE" %}
-  <tr class="{{ 'done-row' if is_done else '' }}" data-id="{{ todo.id }}">
-    <td class="checkbox-cell">
-      <form method="post" action="{{ url_for('toggle', todo_id=todo.id) }}" class="toggle-form">
-        <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if is_done else "" }}>
-      </form>
-    </td>
-    <td class="client-cell" data-label="クライアント名">
-      {% if todo.important == "TRUE" and not is_done %}<span class="badge-important">★</span>{% endif %}
-      {{ todo.client_name }}
-    </td>
-    <td class="content-cell" data-label="内容">{{ todo.content }}</td>
-    <td class="category-cell" data-label="カテゴリ">
-      <span class="badge-category" data-category="{{ todo.category }}">{{ todo.category or "未分類" }}</span>
-      {% if todo.is_test_case == "TRUE" %}<span class="badge-test">🧪 テスト案件</span>{% endif %}
-    </td>
-    <td class="progress-cell" data-label="進捗"><span class="badge-progress" data-stage="{{ todo.progress }}">{{ todo.progress or "未設定" }}</span></td>
-    <td class="due-cell {{ '' if todo.due_date else 'no-date' }}" data-label="期日">{{ todo.due_date or "未設定" }}</td>
-    <td class="actions-cell">
-      <a class="btn-edit" href="{{ url_for('edit', todo_id=todo.id) }}">編集</a>
-      <form method="post" action="{{ url_for('delete', todo_id=todo.id) }}" class="delete-form" data-confirm="削除しますか？">
+{% macro task_item(task) %}
+  <li class="task-item {{ 'done-row' if task.done else '' }}" data-id="{{ task.id }}">
+    <form method="post" action="{{ url_for('toggle', task_id=task.id) }}" class="toggle-form">
+      <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if task.done else "" }} aria-label="完了">
+    </form>
+    <div class="task-body">
+      <span class="task-category">{{ task.category }}</span>
+      <span class="task-arrow">➡︎</span>
+      <span class="task-detail">{{ task.detail }}</span>
+      {% if task.duration %}<span class="task-duration">（{{ task.duration|hours }}）</span>{% endif %}
+    </div>
+    <div class="task-actions">
+      <a class="btn-edit" href="{{ url_for('edit', task_id=task.id) }}">編集</a>
+      <form method="post" action="{{ url_for('delete', task_id=task.id) }}" class="delete-form" data-confirm="削除しますか？">
         <button type="submit" class="btn-delete">削除</button>
       </form>
-    </td>
-    {% if sortable %}
-      <td class="drag-handle-cell"><span class="drag-handle" title="長押しでドラッグして移動">⠿</span></td>
-    {% endif %}
-  </tr>
+      <span class="drag-handle" title="長押しでドラッグして移動">⠿</span>
+    </div>
+  </li>
 {% endmacro %}
 
-{% macro todo_table(rows, sortable=False) %}
-  <table class="todo-table">
-    <thead>
-      <tr>
-        <th class="checkbox-cell"></th>
-        <th class="client-cell">クライアント名</th>
-        <th class="content-cell">内容</th>
-        <th class="category-cell">カテゴリ</th>
-        <th class="progress-cell">進捗</th>
-        <th class="due-cell">期日</th>
-        <th class="actions-cell"></th>
-        {% if sortable %}<th class="drag-handle-cell"></th>{% endif %}
-      </tr>
-    </thead>
-    <tbody class="{{ 'sortable-list' if sortable else '' }}">
-      {% for todo in rows %}{{ todo_row(todo, sortable) }}{% endfor %}
-    </tbody>
-  </table>
+{% macro task_section(title, tasks, section, empty_text, note="") %}
+  <section class="day-section day-section-{{ section }}">
+    <div class="section-head">
+      <h3 class="section-title">{{ title }}</h3>
+      <a class="btn-add-small" href="{{ url_for('add', section=section) }}">＋ 追加</a>
+    </div>
+    {% if note %}<p class="section-note">{{ note }}</p>{% endif %}
+    {% if tasks %}
+      <ul class="task-list sortable-list">
+        {% for task in tasks %}{{ task_item(task) }}{% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">{{ empty_text }}</p>
+    {% endif %}
+  </section>
 {% endmacro %}
+
+{% macro fixed_section(title, fixed, others, section) %}
+  <section class="day-section day-section-{{ section }}">
+    <div class="section-head">
+      <h3 class="section-title">{{ title }}</h3>
+      {% if section == "today" %}
+        <a class="btn-add-small" href="{{ url_for('add', section=section) }}">＋ 追加</a>
+      {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('save_fixed', section=section) }}" class="fixed-form">
+      {% for category in fixed_categories %}
+        {% set task = fixed.get(category) %}
+        <div class="fixed-row">
+          {% if category == count_category %}
+            <label class="fixed-category" for="{{ section }}-detail-{{ loop.index0 }}">{{ category }}</label>
+            <span class="fixed-count">
+              <input type="number" id="{{ section }}-detail-{{ loop.index0 }}" name="detail_{{ loop.index0 }}"
+                     value="{{ task.detail if task else '' }}" min="0" inputmode="numeric" placeholder="0">
+              <span>件</span>
+            </span>
+          {% else %}
+            <label class="fixed-category" for="{{ section }}-detail-{{ loop.index0 }}">{{ category }}➡︎</label>
+            <input type="text" id="{{ section }}-detail-{{ loop.index0 }}" name="detail_{{ loop.index0 }}"
+                   class="fixed-detail" value="{{ task.detail if task else '' }}" maxlength="500" placeholder="内容">
+            <span class="fixed-duration">
+              <input type="number" name="duration_{{ loop.index0 }}"
+                     value="{{ task.duration|replace('時間', '') if task else '' }}" min="0" step="0.5"
+                     inputmode="decimal" placeholder="任意" aria-label="{{ category }}の時間">
+              <span>時間</span>
+            </span>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <div class="fixed-actions">
+        <button type="submit" class="btn-save">保存</button>
+      </div>
+    </form>
+    {% if others %}
+      <ul class="task-list sortable-list fixed-others">
+        {% for task in others %}{{ task_item(task) }}{% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+{% block container_class %}container-wide{% endblock %}
 
 {% block content %}
-  <div class="page-header">
-    <h2>やることリスト</h2>
-    <a class="btn-new" href="{{ url_for('add') }}">＋ 新規追加</a>
+<div class="home-layout">
+<div class="home-main">
+  <div class="report-date-card">
+    <span class="report-date-label">日報対象日</span>
+    <span class="report-date-value">{{ report_date_label }}</span>
+    <a class="report-link" href="{{ url_for('report') }}">日報プレビュー・提出 →</a>
   </div>
 
-  {% if not has_any %}
-    <p class="empty">まだやることが登録されていません。「＋新規追加」から追加してください。</p>
-  {% else %}
-    {% if important %}
-      <h3 class="section-title important-title">📌 重要</h3>
-      {{ todo_table(important, sortable=True) }}
+  {{ fixed_section("今日 " ~ report_date_label, today_fixed, today_tasks, "today") }}
+  {{ fixed_section("明日やること（必須） " ~ tomorrow_label, tomorrow_fixed, tomorrow_tasks, "tomorrow") }}
+  {{ task_section("時間があれば", if_time_tasks, "if_time",
+                  "「時間があれば」のタスクはありません。",
+                  "日報には載りません。終わるまで毎日この欄に出ます。") }}
+</div>
+
+  <aside class="memo-panel">
+    <div class="memo-head">
+      <h3 class="memo-title">MEMO</h3>
+      <span class="memo-count">{{ "%02d" % memos|length }}</span>
+    </div>
+    <p class="memo-sub">日報には載りません<br>チェックしたものは翌日に消えます</p>
+
+    {% if memos %}
+      <ul class="memo-list">
+        {% for memo in memos %}
+          <li class="memo-item {{ 'memo-done' if memo.done else '' }}">
+            <form method="post" action="{{ url_for('memo_toggle', memo_id=memo.id) }}" class="memo-check-form">
+              <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if memo.done else "" }}
+                     aria-label="チェック">
+            </form>
+            <p class="memo-text">{{ memo.text }}</p>
+            <form method="post" action="{{ url_for('memo_delete', memo_id=memo.id) }}" class="memo-delete-form"
+                  data-confirm="このメモを削除しますか？">
+              <button type="submit" class="memo-delete" aria-label="削除">×</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="memo-empty">まだメモはありません</p>
     {% endif %}
 
-    {% for label, rows in month_groups %}
-      <h3 class="section-title">{{ label }}</h3>
-      {{ todo_table(rows, sortable=True) }}
-    {% endfor %}
-
-    {% if done %}
-      <h3 class="section-title done-title">✅ 完了</h3>
-      {{ todo_table(done) }}
-    {% endif %}
-  {% endif %}
+    <form method="post" action="{{ url_for('memo_add') }}" class="memo-form">
+      <textarea name="text" rows="2" maxlength="2000" required placeholder="メモを入力 — Enter で追加"></textarea>
+      <button type="submit" class="memo-add">ADD</button>
+    </form>
+  </aside>
+</div>
 {% endblock %}
 
 {% block scripts %}
+  <script>
+    (function () {
+      // メモ欄: Enter で追加、⌘+Enter（Windows は Ctrl+Enter）で改行
+      var memoForm = document.querySelector(".memo-form");
+      if (!memoForm) return;
+      var textarea = memoForm.querySelector("textarea");
+      textarea.addEventListener("keydown", function (e) {
+        // 日本語入力の変換を確定する Enter では追加しない
+        if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+        e.preventDefault();
+        if (e.metaKey || e.ctrlKey) {
+          textarea.setRangeText("\n", textarea.selectionStart, textarea.selectionEnd, "end");
+          return;
+        }
+        if (textarea.value.trim()) {
+          memoForm.requestSubmit();
+        }
+      });
+    })();
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
   <script>
     (function () {
       if (typeof Sortable === "undefined") return;
 
-      document.querySelectorAll("tbody.sortable-list").forEach(function (tbody) {
-        Sortable.create(tbody, {
+      document.querySelectorAll("ul.sortable-list").forEach(function (list) {
+        Sortable.create(list, {
           handle: ".drag-handle",
           animation: 150,
           delay: 300,
           delayOnTouchOnly: true,
           touchStartThreshold: 10,
           onEnd: function (evt) {
-            var ids = Array.from(evt.to.querySelectorAll("tr")).map(function (tr) {
-              return tr.dataset.id;
+            var ids = Array.from(evt.to.querySelectorAll("li")).map(function (li) {
+              return li.dataset.id;
             });
             fetch("{{ url_for('reorder') }}", {
               method: "POST",

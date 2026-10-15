@@ -1,60 +1,71 @@
 {% extends "base.html" %}
-{% block title %}{{ "編集" if mode == "edit" else "新規追加" }} | Todoリスト{% endblock %}
+{% block title %}{{ "編集" if mode == "edit" else "追加" }} | 毎日やること{% endblock %}
 {% block content %}
-  <h2>{{ "やることを編集" if mode == "edit" else "やることを新規登録" }}</h2>
+  <h2>{{ "タスクを編集" if mode == "edit" else "タスクを追加" }}</h2>
 
   <form method="post" class="todo-form">
+    <fieldset class="section-choice">
+      <legend>どの欄に入れますか</legend>
+      {% for key, label in sections %}
+        <label class="section-option">
+          <input type="radio" name="section" value="{{ key }}" {{ "checked" if task.section == key else "" }}>
+          <span>{{ label }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+
     <label>
-      クライアント名 <span class="required">必須</span>
-      <input type="text" name="client_name" value="{{ todo.client_name if todo else '' }}" required maxlength="200">
+      <span class="field-label">カテゴリ<span class="required">必須</span></span>
+      <input type="text" name="category" value="{{ task.category }}" required maxlength="50"
+             list="category-options" placeholder="例: 動画編集">
+      <datalist id="category-options">
+        <option value="動画編集">
+        <option value="AIエンジニア">
+        <option value="X投稿">
+      </datalist>
     </label>
 
     <label>
-      内容
-      <textarea name="content" rows="5">{{ todo.content if todo else '' }}</textarea>
+      <span class="field-label">内容<span class="required">必須</span></span>
+      <textarea name="detail" rows="3" required maxlength="500" placeholder="例: ショート動画を1本編集">{{ task.detail }}</textarea>
     </label>
 
     <label>
-      期日
-      <input type="date" name="due_date" value="{{ todo.due_date if todo else '' }}">
+      かかった時間（任意・数字だけ）
+      <span class="duration-input">
+        <input type="number" name="duration" value="{{ task.duration|replace('時間', '') }}" min="0" step="0.5"
+               inputmode="decimal" placeholder="例: 5">
+        <span>時間</span>
+      </span>
     </label>
 
-    <div class="form-row">
-      <label>
-        カテゴリ
-        <select name="category">
-          <option value="" {{ "selected" if not (todo and todo.category) else "" }}>未分類</option>
-          {% for c in categories %}
-            <option value="{{ c }}" {{ "selected" if todo and todo.category == c else "" }}>{{ c }}</option>
-          {% endfor %}
-        </select>
+    {% if mode == "add" %}
+      <label class="done-toggle" id="done-toggle">
+        <input type="checkbox" name="done" {{ "checked" if task.done else "" }}>
+        <span>もう終わった（日報の「今日したこと」に載せる）</span>
       </label>
-
-      <label>
-        進捗情報
-        <select name="progress">
-          {% for p in progress_stages %}
-            <option value="{{ p }}" {{ "selected" if todo and todo.progress == p else "" }}>{{ p }}</option>
-          {% endfor %}
-        </select>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <label class="important-toggle">
-        <input type="checkbox" name="important" {{ "checked" if todo and todo.important == "TRUE" else "" }}>
-        <span>⭐ 重要としてピン留めする</span>
-      </label>
-
-      <label class="test-toggle">
-        <input type="checkbox" name="is_test_case" {{ "checked" if todo and todo.is_test_case == "TRUE" else "" }}>
-        <span>🧪 テスト案件にする</span>
-      </label>
-    </div>
+    {% endif %}
 
     <div class="form-actions">
-      <button type="submit">{{ "更新する" if mode == "edit" else "登録する" }}</button>
+      <button type="submit">{{ "保存する" if mode == "edit" else "追加する" }}</button>
       <a class="btn-cancel" href="{{ url_for('index') }}">キャンセル</a>
     </div>
   </form>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      // 「もう終わった」は「今日」に入れるときだけ出す
+      var toggle = document.getElementById("done-toggle");
+      if (!toggle) return;
+      var radios = document.querySelectorAll('input[name="section"]');
+      function update() {
+        var checked = document.querySelector('input[name="section"]:checked');
+        toggle.hidden = !checked || checked.value !== "today";
+      }
+      radios.forEach(function (r) { r.addEventListener("change", update); });
+      update();
+    })();
+  </script>
 {% endblock %}
