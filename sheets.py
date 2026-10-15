@@ -79,6 +79,35 @@ def _get_worksheet(name, headers):
         return sheet
 
 
+_TAB_HEADERS = {}  # 下で定義したあとに埋める
+
+
+def read_tabs(*names):
+    """複数のタブを1回の読み取りでまとめて取ってくる（読み取り回数の上限対策）。
+    {タブ名: 行のリスト（1行目は見出し）} を返す。タブが無ければ作ってから読み直す"""
+    client = _get_client()
+    spreadsheet_id = os.environ["SPREADSHEET_ID"]
+    ranges = [f"'{name}'" for name in names]
+    try:
+        result = client.http_client.values_batch_get(spreadsheet_id, ranges)
+    except APIError as e:
+        if e.response.status_code != 400:  # 400 = まだ無いタブがある
+            raise
+        for name in names:
+            _get_worksheet(name, _TAB_HEADERS[name])
+        result = client.http_client.values_batch_get(spreadsheet_id, ranges)
+    value_ranges = result.get("valueRanges", [])
+    return {name: vr.get("values", []) for name, vr in zip(names, value_ranges)}
+
+
+def _records(rows):
+    """1行目を見出しにして、2行目以降を {見出し: 値} の辞書にする"""
+    if not rows:
+        return []
+    headers = rows[0]
+    return [{h: (row[i] if i < len(row) else "") for i, h in enumerate(headers)} for row in rows[1:] if any(row)]
+
+
 def tasks_sheet():
     return _get_worksheet(TASKS_SHEET, TASK_HEADERS)
 
@@ -109,12 +138,13 @@ def memos_sheet():
 # ---------- メモ（日報には載せない） ----------
 
 
-def get_memos(report_date):
+def get_memos(report_date, rows=None):
     """チェックしていないメモはずっと出す。チェックしたメモはその日だけ出して、日報の日が進んだら隠す"""
-    sheet = memos_sheet()
+    if rows is None:
+        rows = read_tabs(MEMOS_SHEET)[MEMOS_SHEET]
     today = report_date.isoformat()
     memos = []
-    for r in sheet.get_all_records():
+    for r in _records(rows):
         memo = {
             "id": str(r.get("id", "")),
             "text": str(r.get("text", "")),
@@ -179,9 +209,10 @@ def set_setting(key, value):
         sheet.append_row([key, value])
 
 
-def get_all_settings():
-    """settings タブを1回でまとめて読む（読み取り回数の上限に当たりにくくするため）"""
-    rows = settings_sheet().get_all_values()
+def get_all_settings(rows=None):
+    """settings タブを {key: value} にする。rows を渡せば読み直さない"""
+    if rows is None:
+        rows = read_tabs(SETTINGS_SHEET)[SETTINGS_SHEET]
     return {row[0]: (row[1] if len(row) > 1 else "") for row in rows[1:] if row and row[0]}
 
 
@@ -223,9 +254,10 @@ def set_monthly_goal(report_date, text):
     set_setting(_goal_key(report_date), text)
 
 
-def ensure_monthly_goal_initialized(report_date):
+def ensure_monthly_goal_initialized(report_date, settings=None):
     """当月のキーが無いときだけ、前月の本文をコピーして保存する。画面の初期表示用に本文を返す"""
-    settings = get_all_settings()
+    if settings is None:
+        settings = get_all_settings()
     key = _goal_key(report_date)
     if key in settings:
         return settings[key]
@@ -255,10 +287,12 @@ def set_tomorrow_awareness(text):
     set_setting(AWARENESS_KEY, text)
 
 
-def get_report_date():
+def get_report_date(settings=None):
     """日報の対象日。提出（Phase 2）まで壁時計が日付を跨いでも進めない。
     まだ保存されていなければ、日本時間の今日で初期化して保存する"""
-    value = get_setting("report_date")
+    if settings is None:
+        settings = get_all_settings()
+    value = settings.get("report_date")
     if value:
         try:
             return date.fromisoformat(str(value).strip())
@@ -284,9 +318,10 @@ def _normalize(record):
     return task
 
 
-def get_all_tasks():
-    sheet = tasks_sheet()
-    return [_normalize(r) for r in sheet.get_all_records()]
+def get_all_tasks(rows=None):
+    if rows is None:
+        rows = read_tabs(TASKS_SHEET)[TASKS_SHEET]
+    return [_normalize(r) for r in _records(rows)]
 
 
 def _order_key(t):
@@ -533,9 +568,10 @@ def build_report_text(sections, monthly_goal, reflection, awareness):
 def submit_daily_report():
     """日報を提出して、日報の日を1日進める。新しい report_date を返す。
     途中で失敗したときは report_date を変えない（最後に書き換える）"""
-    report_date = get_report_date()
+    data = read_tabs(SETTINGS_SHEET, TASKS_SHEET)
+    report_date = get_report_date(get_all_settings(data[SETTINGS_SHEET]))
     next_date = report_date + timedelta(days=1)
-    tasks = get_all_tasks()
+    tasks = get_all_tasks(data[TASKS_SHEET])
 
     today_tasks, _tomorrow, _if_time = organize_tasks(tasks, report_date)
     _fixed, today_others = split_fixed(today_tasks)
@@ -563,3 +599,8 @@ def submit_daily_report():
 
     set_setting("report_date", next_date.isoformat())
     return next_date
+
+
+_TAB_HEADERS.update(
+    {TASKS_SHEET: TASK_HEADERS, SETTINGS_SHEET: SETTINGS_HEADERS, MEMOS_SHEET: MEMO_HEADERS}
+)

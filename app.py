@@ -33,10 +33,14 @@ from sheets import (
     delete_memo,
     delete_task,
     format_duration,
+    MEMOS_SHEET,
+    SETTINGS_SHEET,
+    TASKS_SHEET,
     get_all_tasks,
     get_memos,
     get_report_date,
     get_task,
+    read_tabs,
     organize_tasks,
     reorder_tasks,
     save_fixed_tasks,
@@ -85,8 +89,10 @@ def _render_form(mode, task, task_id=None):
 
 @app.route("/")
 def index():
-    report_date = get_report_date()
-    today_tasks, tomorrow_tasks, if_time_tasks = organize_tasks(get_all_tasks(), report_date)
+    # 3つのタブを1回の読み取りでまとめて取る
+    data = read_tabs(SETTINGS_SHEET, TASKS_SHEET, MEMOS_SHEET)
+    report_date = get_report_date(get_all_settings(data[SETTINGS_SHEET]))
+    today_tasks, tomorrow_tasks, if_time_tasks = organize_tasks(get_all_tasks(data[TASKS_SHEET]), report_date)
     today_fixed, today_others = split_fixed(today_tasks)
     tomorrow_fixed, tomorrow_others = split_fixed(tomorrow_tasks)
     return render_template(
@@ -100,7 +106,7 @@ def index():
         tomorrow_fixed=tomorrow_fixed,
         tomorrow_tasks=tomorrow_others,
         if_time_tasks=if_time_tasks,
-        memos=get_memos(report_date),
+        memos=get_memos(report_date, data[MEMOS_SHEET]),
     )
 
 
@@ -220,9 +226,10 @@ def delete(task_id):
 
 @app.route("/report")
 def report():
-    report_date = get_report_date()
-    sections = build_report_sections(report_date, get_all_tasks())
-    settings = get_all_settings()
+    data = read_tabs(SETTINGS_SHEET, TASKS_SHEET)
+    settings = get_all_settings(data[SETTINGS_SHEET])
+    report_date = get_report_date(settings)
+    sections = build_report_sections(report_date, get_all_tasks(data[TASKS_SHEET]))
     reflection = get_reflection(report_date, settings)
     report_text = build_report_text(
         sections,
@@ -247,7 +254,8 @@ def report_reflection():
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
-    report_date = get_report_date()
+    all_settings = get_all_settings()
+    report_date = get_report_date(all_settings)
     if request.method == "POST":
         set_monthly_goal(report_date, request.form.get("monthly_goal", "").strip())
         set_tomorrow_awareness(request.form.get("tomorrow_awareness", "").strip())
@@ -257,8 +265,8 @@ def settings():
     return render_template(
         "settings.html",
         month_label=f"{report_date.year}年{report_date.month}月",
-        monthly_goal=ensure_monthly_goal_initialized(report_date),
-        tomorrow_awareness=get_tomorrow_awareness(),
+        monthly_goal=ensure_monthly_goal_initialized(report_date, all_settings),
+        tomorrow_awareness=get_tomorrow_awareness(all_settings),
     )
 
 
