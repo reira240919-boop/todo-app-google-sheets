@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}毎日やること{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <!-- ホーム画面に追加したときのアイコンと名前 -->
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <meta name="apple-mobile-web-app-title" content="毎日やること">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
 </head>
 <body>
   <header class="topbar">
