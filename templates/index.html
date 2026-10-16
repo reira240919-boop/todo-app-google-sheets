@@ -139,10 +139,18 @@
 {% block scripts %}
   <script>
     (function () {
-      // メモ欄: Enter で追加、⌘+Enter（Windows は Ctrl+Enter）で改行
+      // メモ欄
+      //   パソコン: Enter で追加、⌘+Enter（Windows は Ctrl+Enter）で改行
+      //   スマホ:   Enter で改行、ADD ボタンで追加（何行もまとめて書けるように）
       var memoForm = document.querySelector(".memo-form");
       if (!memoForm) return;
       var textarea = memoForm.querySelector("textarea");
+      var isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+      if (isTouch) {
+        textarea.placeholder = "メモを入力 — ADD で追加";
+        textarea.setAttribute("enterkeyhint", "enter");
+        return;
+      }
       textarea.addEventListener("keydown", function (e) {
         // 日本語入力の変換を確定する Enter では追加しない
         if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
