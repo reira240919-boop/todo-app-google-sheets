@@ -18,7 +18,7 @@ from sheets import (
     SECTION_IF_TIME,
     SECTION_TODAY,
     SECTION_TOMORROW,
-    add_memo,
+    add_memos,
     add_task,
     build_report_sections,
     build_report_text,
@@ -42,6 +42,7 @@ from sheets import (
     get_task,
     read_tabs,
     organize_tasks,
+    reorder_memos,
     reorder_tasks,
     save_fixed_tasks,
     section_of,
@@ -49,6 +50,7 @@ from sheets import (
     set_memo_done,
     split_fixed,
     submit_daily_report,
+    update_memo,
     update_task,
 )
 
@@ -112,13 +114,45 @@ def index():
 
 @app.route("/memo/add", methods=["POST"])
 def memo_add():
-    text = request.form.get("text", "").strip()
-    if not text:
+    count = add_memos(request.form.get("text", ""))
+    if count == 0:
         flash("メモが空です", "error")
     else:
-        add_memo(text)
-        flash("メモを追加しました", "success")
+        flash(f"メモを{count}件追加しました" if count > 1 else "メモを追加しました", "success")
     return redirect(url_for("index"))
+
+
+@app.route("/memo/<memo_id>/items", methods=["POST"])
+def memo_add_items(memo_id):
+    count = add_memos(request.form.get("text", ""), parent_id=memo_id)
+    if count == 0:
+        flash("リストが空です", "error")
+    else:
+        flash(f"リストに{count}件追加しました", "success")
+    return redirect(url_for("index"))
+
+
+@app.route("/memo/edit/<memo_id>", methods=["POST"])
+def memo_edit(memo_id):
+    # メモは1行ずつなので、改行が入っていたら空白にする
+    text = " ".join(request.form.get("text", "").splitlines()).strip()
+    if not text:
+        flash("メモが空です", "error")
+    elif update_memo(memo_id, text):
+        flash("メモを修正しました", "success")
+    else:
+        flash("そのメモは見つかりませんでした", "error")
+    return redirect(url_for("index"))
+
+
+@app.route("/memo/reorder", methods=["POST"])
+def memo_reorder():
+    data = request.get_json(silent=True) or {}
+    ids = data.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"status": "error", "message": "invalid ids"}), 400
+    reorder_memos(ids)
+    return jsonify({"status": "ok"})
 
 
 @app.route("/memo/toggle/<memo_id>", methods=["POST"])
@@ -137,24 +171,27 @@ def memo_delete(memo_id):
     return redirect(url_for("index"))
 
 
-@app.route("/save-fixed/<section>", methods=["POST"])
-def save_fixed(section):
+@app.route("/save-fixed", methods=["POST"])
+def save_fixed():
+    # 「今日」「明日」のどちらの保存ボタンを押しても、両方の欄をまとめて保存する
     report_date = get_report_date()
-    if section == SECTION_TODAY:
-        task_date = report_date
-    elif section == SECTION_TOMORROW:
-        task_date = report_date + timedelta(days=1)
-    else:
-        flash("保存先が正しくありません", "error")
-        return redirect(url_for("index"))
-
-    entries = {}
-    for i, category in enumerate(FIXED_CATEGORIES):
-        detail = request.form.get(f"detail_{i}", "").strip()
-        duration = request.form.get(f"duration_{i}", "").strip()
-        entries[category] = (detail, duration)
-    save_fixed_tasks(task_date.isoformat(), entries)
-    flash("保存しました", "success")
+    dates = {
+        SECTION_TODAY: report_date,
+        SECTION_TOMORROW: report_date + timedelta(days=1),
+    }
+    entries_by_date = {}
+    for section, task_date in dates.items():
+        entries = {}
+        for i, category in enumerate(FIXED_CATEGORIES):
+            detail = request.form.get(f"{section}_detail_{i}")
+            if detail is None:  # その欄が送られてこなかったときは触らない
+                continue
+            duration = request.form.get(f"{section}_duration_{i}", "").strip()
+            entries[category] = (detail.strip(), duration)
+        if entries:
+            entries_by_date[task_date.isoformat()] = entries
+    save_fixed_tasks(entries_by_date)
+    flash("今日と明日の内容を保存しました", "success")
     return redirect(url_for("index"))
 
 

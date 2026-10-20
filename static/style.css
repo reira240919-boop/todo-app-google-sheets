@@ -763,11 +763,164 @@ h2 {
 }
 
 .memo-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+
+.memo-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
+}
+
+/* メモの中のリストを開け閉めする ∨ */
+.memo-toggle {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0 -6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  color: var(--ink);
+}
+
+.memo-toggle::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.memo-toggle[aria-expanded="true"]::before {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.memo-sublist[hidden] {
+  display: none;
+}
+
+/* ∨ を文字のすぐ横に置く */
+.memo-row .memo-text:has(+ .memo-toggle) {
+  flex: 0 1 auto;
+}
+
+.memo-row .memo-text + .memo-toggle {
+  margin-right: auto;
+}
+
+/* メモの中のリスト（少し右に下げて小さめに出す） */
+.memo-sublist {
+  list-style: none;
+  margin: 6px 0 0 26px;
+  padding: 0;
+  border-left: 1px solid var(--line);
+}
+
+.memo-subitem {
+  padding: 6px 0 6px 12px;
+  border-bottom: none;
+}
+
+.memo-subitem .memo-text {
+  font-size: 13px;
+}
+
+.memo-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.memo-actions .drag-handle {
+  font-size: 15px;
+  padding: 3px 0 3px 4px;
+}
+
+.memo-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 4px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.memo-btn:hover {
+  color: var(--ink);
+}
+
+.memo-actions .memo-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.memo-row:hover .memo-btn,
+.memo-actions .memo-btn:focus-visible {
+  opacity: 1;
+}
+
+.memo-btn-solid {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  padding: 5px 14px;
+  font-weight: 700;
+}
+
+.memo-btn-solid:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+/* 編集・リスト追加の入力欄 */
+.memo-inline-form {
+  margin: 8px 0 2px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.memo-inline-form[hidden] {
+  display: none;
+}
+
+.memo-inline-form input,
+.memo-inline-form textarea {
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.memo-inline-form input:focus,
+.memo-inline-form textarea:focus {
+  outline: none;
+}
+
+.memo-inline-form textarea::placeholder {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.memo-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .memo-check-form {
@@ -789,7 +942,7 @@ h2 {
   word-break: break-word;
 }
 
-.memo-done .memo-text {
+.memo-done > .memo-row .memo-text {
   color: var(--muted);
   text-decoration: line-through;
   text-decoration-thickness: 1px;
@@ -807,7 +960,7 @@ h2 {
   transition: opacity 0.15s ease, color 0.15s ease;
 }
 
-.memo-item:hover .memo-delete,
+.memo-row:hover .memo-delete,
 .memo-delete:focus-visible {
   opacity: 1;
 }
@@ -818,8 +971,9 @@ h2 {
 
 /* タッチ操作の端末ではホバーできないので、薄く出しておく */
 @media (hover: none) {
-  .memo-delete {
-    opacity: 0.5;
+  .memo-delete,
+  .memo-actions .memo-btn {
+    opacity: 0.6;
   }
 }
 
