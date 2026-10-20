@@ -31,7 +31,7 @@ TASK_HEADERS = [
     "created_at",
 ]
 SETTINGS_HEADERS = ["key", "value"]
-MEMO_HEADERS = ["id", "text", "created_at", "done", "done_on"]
+MEMO_HEADERS = ["id", "text", "created_at", "done", "done_on", "sort_order", "parent_id"]
 
 # フォームの「どの欄に入れるか」
 SECTION_TODAY = "today"
@@ -129,8 +129,9 @@ def format_duration(duration):
 def memos_sheet():
     sheet = _get_worksheet(MEMOS_SHEET, MEMO_HEADERS)
     # 列を後から増やしたので、古いタブなら列と見出しを足す
-    if sheet.col_count < len(MEMO_HEADERS):
-        sheet.add_cols(len(MEMO_HEADERS) - sheet.col_count)
+    if sheet.row_values(1) != MEMO_HEADERS:
+        if sheet.col_count < len(MEMO_HEADERS):
+            sheet.add_cols(len(MEMO_HEADERS) - sheet.col_count)
         sheet.update(values=[MEMO_HEADERS], range_name="A1")
     return sheet
 
@@ -138,27 +139,59 @@ def memos_sheet():
 # ---------- メモ（日報には載せない） ----------
 
 
-def get_memos(report_date, rows=None):
+def _memo_visible(memo, today):
     """チェックしていないメモはずっと出す。チェックしたメモはその日だけ出して、日報の日が進んだら隠す"""
+    return not memo["done"] or memo["done_on"] >= today
+
+
+def get_memos(report_date, rows=None):
+    """メモの一覧。メモの中のリストは、それぞれのメモの "items" に入れて返す"""
     if rows is None:
         rows = read_tabs(MEMOS_SHEET)[MEMOS_SHEET]
     today = report_date.isoformat()
-    memos = []
+    all_memos = []
     for r in _records(rows):
-        memo = {
-            "id": str(r.get("id", "")),
-            "text": str(r.get("text", "")),
-            "done": _is_true(r.get("done", "")),
-            "done_on": str(r.get("done_on", "")).strip(),
-        }
-        if not memo["done"] or memo["done_on"] >= today:
-            memos.append(memo)
+        all_memos.append(
+            {
+                "id": str(r.get("id", "")),
+                "text": str(r.get("text", "")),
+                "done": _is_true(r.get("done", "")),
+                "done_on": str(r.get("done_on", "")).strip(),
+                "sort_order": r.get("sort_order", ""),
+                "created_at": r.get("created_at", ""),
+                "parent_id": str(r.get("parent_id", "")).strip(),
+                "items": [],
+            }
+        )
+    all_memos.sort(key=_order_key)
+
+    memos = [m for m in all_memos if not m["parent_id"] and _memo_visible(m, today)]
+    by_id = {m["id"]: m for m in memos}
+    for m in all_memos:
+        parent = by_id.get(m["parent_id"])
+        if parent and _memo_visible(m, today):
+            parent["items"].append(m)
     return memos
 
 
-def add_memo(text):
+def add_memos(text, parent_id=""):
+    """改行で区切って、1行を1つのメモとして追加する（parent_id があれば、そのメモの中のリストに入れる）。
+    追加した件数を返す"""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return 0
+    now = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
+    memos_sheet().append_rows([[str(uuid.uuid4()), line, now, "FALSE", "", "", parent_id] for line in lines])
+    return len(lines)
+
+
+def update_memo(memo_id, text):
     sheet = memos_sheet()
-    sheet.append_row([str(uuid.uuid4()), text, datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S"), "FALSE", ""])
+    cell = sheet.find(memo_id, in_column=1)
+    if not cell:
+        return False
+    sheet.update(values=[[text]], range_name=f"B{cell.row}")
+    return True
 
 
 def set_memo_done(memo_id, done, report_date):
@@ -171,12 +204,34 @@ def set_memo_done(memo_id, done, report_date):
     return True
 
 
-def delete_memo(memo_id):
+def reorder_memos(ordered_ids):
+    """ドラッグ&ドロップで決めた新しい並び順を sort_order 列にまとめて保存する"""
     sheet = memos_sheet()
-    cell = sheet.find(memo_id, in_column=1)
-    if not cell:
+    id_to_row = {value: i + 1 for i, value in enumerate(sheet.col_values(1)) if i > 0}
+    updates = [
+        {"range": f"F{id_to_row[memo_id]}", "values": [[index]]}
+        for index, memo_id in enumerate(ordered_ids)
+        if memo_id in id_to_row
+    ]
+    if updates:
+        sheet.batch_update(updates)
+    return True
+
+
+def delete_memo(memo_id):
+    """メモを消す。中のリストも一緒に消す"""
+    sheet = memos_sheet()
+    rows = sheet.get_all_values()
+    targets = [
+        i + 1
+        for i, row in enumerate(rows)
+        if i > 0 and row and (row[0] == memo_id or (len(row) > 6 and row[6] == memo_id))
+    ]
+    if not targets:
         return False
-    sheet.delete_rows(cell.row)
+    # 下の行から消すと、上の行の番号がずれない
+    for row_number in sorted(targets, reverse=True):
+        sheet.delete_rows(row_number)
     return True
 
 
@@ -429,36 +484,38 @@ def update_task(task_id, category, detail, duration, section, report_date):
     return True
 
 
-def save_fixed_tasks(task_date, entries):
-    """固定カテゴリの行をまとめて保存する。
-    entries は {カテゴリ: (内容, 時間)}。内容が空なら、その日のその行は消す"""
+def save_fixed_tasks(entries_by_date):
+    """固定カテゴリの行をまとめて保存する（今日と明日を一度に保存できる）。
+    entries_by_date は {日付: {カテゴリ: (内容, 時間)}}。内容が空なら、その日のその行は消す"""
     sheet = tasks_sheet()
-    existing = {}
+    existing = {}  # (日付, カテゴリ) -> 行番号
     for i, record in enumerate(sheet.get_all_records()):
         t = _normalize(record)
+        key = (t["task_date"], t["category"])
         if (
-            t["task_date"] == task_date
+            t["task_date"] in entries_by_date
             and not t["if_time_allows"]
-            and t["category"] in entries
-            and t["category"] not in existing
+            and t["category"] in entries_by_date[t["task_date"]]
+            and key not in existing
         ):
-            existing[t["category"]] = i + 2  # 1行目は見出し
+            existing[key] = i + 2  # 1行目は見出し
 
     updates, delete_rows, new_rows = [], [], []
     now = datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S")
-    for order, category in enumerate(FIXED_CATEGORIES):
-        if category not in entries:
-            continue
-        detail, duration = entries[category]
-        row = existing.get(category)
-        if row and detail:
-            updates.append({"range": f"D{row}:E{row}", "values": [[detail, duration]]})
-        elif row:
-            delete_rows.append(row)
-        elif detail:
-            new_rows.append(
-                [str(uuid.uuid4()), task_date, category, detail, duration, "FALSE", "FALSE", order, now]
-            )
+    for task_date, entries in entries_by_date.items():
+        for order, category in enumerate(FIXED_CATEGORIES):
+            if category not in entries:
+                continue
+            detail, duration = entries[category]
+            row = existing.get((task_date, category))
+            if row and detail:
+                updates.append({"range": f"D{row}:E{row}", "values": [[detail, duration]]})
+            elif row:
+                delete_rows.append(row)
+            elif detail:
+                new_rows.append(
+                    [str(uuid.uuid4()), task_date, category, detail, duration, "FALSE", "FALSE", order, now]
+                )
 
     if updates:
         sheet.batch_update(updates)

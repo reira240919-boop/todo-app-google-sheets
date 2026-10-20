@@ -47,23 +47,26 @@
         <a class="btn-add-small" href="{{ url_for('add', section=section) }}">＋ 追加</a>
       {% endif %}
     </div>
-    <form method="post" action="{{ url_for('save_fixed', section=section) }}" class="fixed-form">
+    {# 今日・明日の欄はどちらも、ページ上部の1つのフォーム（fixed-form）に入る #}
+    <div class="fixed-form">
       {% for category in fixed_categories %}
         {% set task = fixed.get(category) %}
         <div class="fixed-row">
           {% if category == count_category %}
             <label class="fixed-category" for="{{ section }}-detail-{{ loop.index0 }}">{{ category }}</label>
             <span class="fixed-count">
-              <input type="number" id="{{ section }}-detail-{{ loop.index0 }}" name="detail_{{ loop.index0 }}"
+              <input type="number" id="{{ section }}-detail-{{ loop.index0 }}" name="{{ section }}_detail_{{ loop.index0 }}"
+                     form="fixed-form"
                      value="{{ task.detail if task else '' }}" min="0" inputmode="numeric" placeholder="0">
               <span>件</span>
             </span>
           {% else %}
             <label class="fixed-category" for="{{ section }}-detail-{{ loop.index0 }}">{{ category }}➡︎</label>
-            <input type="text" id="{{ section }}-detail-{{ loop.index0 }}" name="detail_{{ loop.index0 }}"
+            <input type="text" id="{{ section }}-detail-{{ loop.index0 }}" name="{{ section }}_detail_{{ loop.index0 }}"
+                   form="fixed-form"
                    class="fixed-detail" value="{{ task.detail if task else '' }}" maxlength="500" placeholder="内容">
             <span class="fixed-duration">
-              <input type="number" name="duration_{{ loop.index0 }}"
+              <input type="number" name="{{ section }}_duration_{{ loop.index0 }}" form="fixed-form"
                      value="{{ task.duration|replace('時間', '') if task else '' }}" min="0" step="0.5"
                      inputmode="decimal" placeholder="任意" aria-label="{{ category }}の時間">
               <span>時間</span>
@@ -72,9 +75,9 @@
         </div>
       {% endfor %}
       <div class="fixed-actions">
-        <button type="submit" class="btn-save">保存</button>
+        <button type="submit" class="btn-save" form="fixed-form">保存</button>
       </div>
-    </form>
+    </div>
     {% if others %}
       <ul class="task-list sortable-list fixed-others">
         {% for task in others %}{{ task_item(task) }}{% endfor %}
@@ -83,11 +86,41 @@
   </section>
 {% endmacro %}
 
+{% macro memo_row(memo, is_item=False) %}
+  <div class="memo-row">
+    <form method="post" action="{{ url_for('memo_toggle', memo_id=memo.id) }}" class="memo-check-form">
+      <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if memo.done else "" }}
+             aria-label="チェック">
+    </form>
+    <p class="memo-text">{{ memo.text }}</p>
+    {% if not is_item and memo['items'] %}
+      <button type="button" class="memo-toggle" aria-expanded="false" aria-label="リストを開く"></button>
+    {% endif %}
+    <div class="memo-actions">
+      <button type="button" class="memo-btn" data-open="edit">編集</button>
+      {% if not is_item %}<button type="button" class="memo-btn" data-open="items">＋リスト</button>{% endif %}
+      <form method="post" action="{{ url_for('memo_delete', memo_id=memo.id) }}" class="memo-delete-form"
+            data-confirm="{{ 'このメモを削除しますか？（中のリストも消えます）' if memo['items'] else 'このメモを削除しますか？' }}">
+        <button type="submit" class="memo-delete" aria-label="削除">×</button>
+      </form>
+      <span class="drag-handle {{ 'memo-item-handle' if is_item else 'memo-handle' }}" title="長押しでドラッグして移動">⠿</span>
+    </div>
+  </div>
+  <form method="post" action="{{ url_for('memo_edit', memo_id=memo.id) }}" class="memo-inline-form" data-panel="edit" hidden>
+    <input type="text" name="text" value="{{ memo.text }}" maxlength="2000" required aria-label="メモの修正">
+    <div class="memo-inline-actions">
+      <button type="button" class="memo-btn" data-close>やめる</button>
+      <button type="submit" class="memo-btn memo-btn-solid">保存</button>
+    </div>
+  </form>
+{% endmacro %}
+
 {% block container_class %}container-wide{% endblock %}
 
 {% block content %}
 <div class="home-layout">
 <div class="home-main">
+  <form id="fixed-form" method="post" action="{{ url_for('save_fixed') }}"></form>
   <div class="report-date-card">
     <span class="report-date-label">日報対象日</span>
     <span class="report-date-value">{{ report_date_label }}</span>
@@ -109,17 +142,27 @@
     <p class="memo-sub">日報には載りません<br>チェックしたものは翌日に消えます</p>
 
     {% if memos %}
-      <ul class="memo-list">
+      <ul class="memo-list memo-sortable" data-handle=".memo-handle">
         {% for memo in memos %}
-          <li class="memo-item {{ 'memo-done' if memo.done else '' }}">
-            <form method="post" action="{{ url_for('memo_toggle', memo_id=memo.id) }}" class="memo-check-form">
-              <input type="checkbox" name="done" onchange="this.form.submit()" {{ "checked" if memo.done else "" }}
-                     aria-label="チェック">
-            </form>
-            <p class="memo-text">{{ memo.text }}</p>
-            <form method="post" action="{{ url_for('memo_delete', memo_id=memo.id) }}" class="memo-delete-form"
-                  data-confirm="このメモを削除しますか？">
-              <button type="submit" class="memo-delete" aria-label="削除">×</button>
+          <li class="memo-item {{ 'memo-done' if memo.done else '' }}" data-id="{{ memo.id }}">
+            {{ memo_row(memo) }}
+            {% if memo['items'] %}
+              <ul class="memo-sublist memo-sortable" data-handle=".memo-item-handle" hidden>
+                {% for item in memo['items'] %}
+                  <li class="memo-item memo-subitem {{ 'memo-done' if item.done else '' }}" data-id="{{ item.id }}">
+                    {{ memo_row(item, is_item=True) }}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+            <form method="post" action="{{ url_for('memo_add_items', memo_id=memo.id) }}" class="memo-inline-form memo-items-form"
+                  data-panel="items" hidden>
+              <textarea name="text" rows="2" maxlength="2000" required placeholder="1行に1つ（例：牛乳、卵）"
+                        aria-label="リストに追加"></textarea>
+              <div class="memo-inline-actions">
+                <button type="button" class="memo-btn" data-close>やめる</button>
+                <button type="submit" class="memo-btn memo-btn-solid">追加</button>
+              </div>
             </form>
           </li>
         {% endfor %}
@@ -129,7 +172,7 @@
     {% endif %}
 
     <form method="post" action="{{ url_for('memo_add') }}" class="memo-form">
-      <textarea name="text" rows="2" maxlength="2000" required placeholder="メモを入力 — Enter で追加"></textarea>
+      <textarea name="text" rows="2" maxlength="2000" required placeholder="メモを入力 — Enter で追加（1行に1つ）"></textarea>
       <button type="submit" class="memo-add">ADD</button>
     </form>
   </aside>
@@ -142,12 +185,13 @@
       // メモ欄
       //   パソコン: Enter で追加、⌘+Enter（Windows は Ctrl+Enter）で改行
       //   スマホ:   Enter で改行、ADD ボタンで追加（何行もまとめて書けるように）
+      //   どちらも、改行で区切った行はそれぞれ別のメモになる
       var memoForm = document.querySelector(".memo-form");
       if (!memoForm) return;
       var textarea = memoForm.querySelector("textarea");
       var isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
       if (isTouch) {
-        textarea.placeholder = "メモを入力 — ADD で追加";
+        textarea.placeholder = "1行に1つ — ADD でまとめて追加";
         textarea.setAttribute("enterkeyhint", "enter");
         return;
       }
@@ -162,6 +206,73 @@
         if (textarea.value.trim()) {
           memoForm.requestSubmit();
         }
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      // メモの中のリストは閉じておき、∨ を押したら開く。開いたメモはこの端末に覚えておく
+      var OPEN_KEY = "memoOpenIds";
+      var openIds = [];
+      try {
+        openIds = JSON.parse(localStorage.getItem(OPEN_KEY) || "[]");
+      } catch (e) {}
+      function saveOpenIds() {
+        try {
+          localStorage.setItem(OPEN_KEY, JSON.stringify(openIds));
+        } catch (e) {}
+      }
+      function setOpen(item, open) {
+        var sublist = item.querySelector(":scope > .memo-sublist");
+        var toggle = item.querySelector(":scope > .memo-row .memo-toggle");
+        if (sublist) sublist.hidden = !open;
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          toggle.setAttribute("aria-label", open ? "リストを閉じる" : "リストを開く");
+        }
+        var id = item.dataset.id;
+        openIds = openIds.filter(function (x) { return x !== id; });
+        if (open) openIds.push(id);
+      }
+      document.querySelectorAll(".memo-list > .memo-item").forEach(function (item) {
+        if (openIds.indexOf(item.dataset.id) !== -1) setOpen(item, true);
+        var toggle = item.querySelector(":scope > .memo-row .memo-toggle");
+        if (toggle) {
+          toggle.addEventListener("click", function () {
+            setOpen(item, toggle.getAttribute("aria-expanded") !== "true");
+            saveOpenIds();
+          });
+        }
+        // リストに追加したら、戻ってきたとき開いた状態で見えるようにする
+        var itemsForm = item.querySelector(":scope > .memo-items-form");
+        if (itemsForm) {
+          itemsForm.addEventListener("submit", function () {
+            setOpen(item, true);
+            saveOpenIds();
+          });
+        }
+      });
+
+      // メモの「編集」「＋リスト」で入力欄を開き、「やめる」で閉じる
+      document.querySelectorAll(".memo-item").forEach(function (item) {
+        item.querySelectorAll(":scope > .memo-row [data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            item.querySelectorAll(":scope > .memo-inline-form").forEach(function (f) {
+              f.hidden = f.dataset.panel !== btn.dataset.open;
+            });
+            var panel = item.querySelector(":scope > .memo-inline-form[data-panel='" + btn.dataset.open + "']");
+            var field = panel && panel.querySelector("input, textarea");
+            if (field) {
+              field.focus();
+              if (field.select && btn.dataset.open === "edit") field.select();
+            }
+          });
+        });
+      });
+      document.querySelectorAll(".memo-inline-form [data-close]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          btn.closest(".memo-inline-form").hidden = true;
+        });
       });
     })();
   </script>
@@ -182,6 +293,29 @@
               return li.dataset.id;
             });
             fetch("{{ url_for('reorder') }}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: ids }),
+            }).catch(function () {
+              location.reload();
+            });
+          },
+        });
+      });
+
+      // メモ（と、メモの中のリスト）の並べ替え。リストは同じメモの中だけで動かせる
+      document.querySelectorAll("ul.memo-sortable").forEach(function (list) {
+        Sortable.create(list, {
+          handle: list.dataset.handle,
+          animation: 150,
+          delay: 300,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 10,
+          onEnd: function (evt) {
+            var ids = Array.from(evt.to.children).map(function (li) {
+              return li.dataset.id;
+            });
+            fetch("{{ url_for('memo_reorder') }}", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ids: ids }),
