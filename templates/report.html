@@ -25,12 +25,12 @@
     </div>
     <p class="copy-message" id="copy-message" hidden></p>
     <textarea class="report-text" id="report-text" readonly rows="24">{{ report_text }}</textarea>
-    <p class="section-note section-note-after">今月の目標・明日意識することは <a href="{{ url_for('settings') }}">設定</a> で編集できます。</p>
+    <p class="section-note section-note-after">今月の目標は <a href="{{ url_for('goals') }}">目標</a>、明日意識することは <a href="{{ url_for('settings') }}">設定</a> で編集できます。</p>
   </section>
 
   <section class="day-section submit-section">
     <p class="section-note">LINE に送ったら提出してください。日報の日が翌日に進み、終わっていないタスクは翌日にコピーされます。</p>
-    <form method="post" action="{{ url_for('report_submit') }}"
+    <form method="post" action="{{ url_for('report_submit') }}" data-loading="提出中…"
           data-confirm="日報を提出しますか？&#10;日報の日が翌日に進みます（元に戻せません）。">
       <button type="submit" class="btn-submit">日報を提出する</button>
     </form>
