@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}目標 | 毎日やること{% endblock %}
+{% block content %}
+  <div class="month-bar">
+    {% if prev_key %}
+      <a class="month-step" href="{{ url_for('goals', month=prev_key) }}">‹ 前の月</a>
+    {% else %}
+      <span class="month-step is-disabled">‹ 前の月</span>
+    {% endif %}
+    <div class="month-center">
+      <span class="month-name">{{ month_label }}</span>
+      <span class="month-status {{ 'is-done' if reviewed else '' }}">{{ status }}</span>
+    </div>
+    {% if next_key %}
+      <a class="month-step" href="{{ url_for('goals', month=next_key) }}">{{ '来月の目標 ›' if is_this_month else '次の月 ›' }}</a>
+    {% else %}
+      <span class="month-step is-disabled">次の月 ›</span>
+    {% endif %}
+  </div>
+
+  <section class="day-section">
+    <div class="section-head">
+      <h3 class="section-title">{{ month_num }}月の目標</h3>
+    </div>
+    <p class="section-note">1行に1つ書きます。「・」で始まる行が目標、「⭐」で始まる行はその下の小目標です。</p>
+    {% if not goal_saved %}
+      <div class="flash flash-success">今月の目標が入っています。来月に合わせて直して、保存してください。</div>
+    {% endif %}
+    <form method="post" action="{{ url_for('goals_save', month_key=month_key) }}" class="plain-form">
+      <textarea name="monthly_goal" rows="7" maxlength="3000" placeholder="・目標を1行ずつ書く">{{ goal }}</textarea>
+      <div class="fixed-actions">
+        <button type="submit" class="btn-save">保存</button>
+      </div>
+    </form>
+    {% if not is_future and goal_lines %}
+      <button type="button" class="btn-wide" id="review-open" {{ 'hidden' if reviewed else '' }}>{{ month_num }}月の振り返りをする</button>
+    {% endif %}
+  </section>
+
+  {% if not is_future and goal_lines %}
+    <section class="day-section" id="review" {{ '' if reviewed else 'hidden' }}>
+      <div class="section-head">
+        <h3 class="section-title">{{ month_num }}月の振り返り</h3>
+      </div>
+      <form method="post" action="{{ url_for('goals_review', month_key=month_key) }}" id="review-form">
+        <p class="review-step">① 目標ごとに結果を選ぶ</p>
+        <ul class="review-list">
+          {% for line in goal_lines %}
+            {% set i = loop.index0 %}
+            <li class="review-row {{ 'is-sub' if line.sub else '' }}" data-text="{{ line.text }}">
+              <span class="review-goal">{{ line.text }}</span>
+              <span class="marks">
+                {% for key, symbol in marks.items() %}
+                  <label><input type="radio" name="mark_{{ i }}" value="{{ key }}" {{ 'checked' if line.mark == key else '' }}><span>{{ symbol }}</span></label>
+                {% endfor %}
+                <label><input type="radio" name="mark_{{ i }}" value="" {{ 'checked' if not line.mark else '' }}><span>なし</span></label>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <p class="review-step">② ひとこと（できなかった理由・来月どうするか）</p>
+        <div class="plain-form">
+          <textarea name="comment" id="review-comment" rows="7" maxlength="3000"
+                    placeholder="例：案件が重なって時間が取れなかった。来月はリソースを考えて受ける。">{{ comment }}</textarea>
+          <div class="fixed-actions">
+            <button type="submit" class="btn-save">振り返りを保存</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="section-head review-preview-head">
+        <p class="review-step">③ できあがった文章</p>
+        <button type="button" class="btn-save" id="copy-button">クリップボードにコピー</button>
+      </div>
+      <p class="copy-message" id="copy-message" hidden></p>
+      <textarea class="report-text" id="review-text" readonly rows="14"></textarea>
+
+      {% if is_this_month and reviewed %}
+        <a class="btn-wide" href="{{ url_for('goals', month=next_month_key) }}">つづけて {{ next_num }}月の目標を立てる ›</a>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="day-section">
+    <div class="section-head">
+      <h3 class="section-title">これまでの目標</h3>
+    </div>
+    <ul class="month-history">
+      {% for h in history %}
+        <li class="{{ 'is-current' if h.current else '' }}">
+          <a href="{{ url_for('goals', month=h.key) }}">
+            <span>{{ h.label }}</span>
+            <span class="month-history-score">{{ h.status }}{% if h.score %}　{{ h.score }}{% endif %}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      var form = document.getElementById("review-form");
+      if (!form) return;
+      var SYMBOLS = {{ marks | tojson }};
+      var output = document.getElementById("review-text");
+      var comment = document.getElementById("review-comment");
+
+      // 選んだ ⭕️🔺❌ とひとことから、LINE などに貼る文章を作る
+      function build() {
+        var out = ["◾️{{ month_num }}月の目標の振り返り"];
+        form.querySelectorAll(".review-row").forEach(function (row) {
+          var checked = row.querySelector("input:checked");
+          out.push(row.dataset.text + (checked && SYMBOLS[checked.value] ? SYMBOLS[checked.value] : ""));
+        });
+        if (comment.value.trim()) out.push("", comment.value.trim());
+        output.value = out.join("\n");
+      }
+      form.addEventListener("change", build);
+      comment.addEventListener("input", build);
+      build();
+
+      var open = document.getElementById("review-open");
+      if (open) {
+        open.addEventListener("click", function () {
+          var section = document.getElementById("review");
+          section.hidden = false;
+          open.hidden = true;
+          section.scrollIntoView({ behavior: "smooth" });
+        });
+      }
+
+      var message = document.getElementById("copy-message");
+      function show(text, isError) {
+        message.textContent = text;
+        message.className = "copy-message " + (isError ? "flash flash-error" : "flash flash-success");
+        message.hidden = false;
+      }
+      document.getElementById("copy-button").addEventListener("click", function () {
+        if (!navigator.clipboard) {
+          output.select();
+          show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+          return;
+        }
+        navigator.clipboard.writeText(output.value).then(
+          function () { show("コピーしました", false); },
+          function () {
+            output.select();
+            show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+          }
+        );
+      });
+    })();
+  </script>
+{% endblock %}

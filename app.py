@@ -1,5 +1,6 @@
+import json
 import os
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 
@@ -22,8 +23,14 @@ from sheets import (
     add_task,
     build_report_sections,
     build_report_text,
+    REVIEW_MARKS,
     ensure_monthly_goal_initialized,
     get_all_settings,
+    get_goal_review,
+    goal_months,
+    has_monthly_goal,
+    review_score,
+    set_goal_review,
     get_monthly_goal,
     get_reflection,
     get_tomorrow_awareness,
@@ -46,8 +53,8 @@ from sheets import (
     reorder_tasks,
     save_fixed_tasks,
     section_of,
-    set_done,
-    set_memo_done,
+    set_memos_done,
+    set_tasks_done,
     split_fixed,
     submit_daily_report,
     update_memo,
@@ -155,13 +162,6 @@ def memo_reorder():
     return jsonify({"status": "ok"})
 
 
-@app.route("/memo/toggle/<memo_id>", methods=["POST"])
-def memo_toggle(memo_id):
-    done = request.form.get("done") == "on"
-    set_memo_done(memo_id, done, get_report_date())
-    return redirect(url_for("index"))
-
-
 @app.route("/memo/delete/<memo_id>", methods=["POST"])
 def memo_delete(memo_id):
     if delete_memo(memo_id):
@@ -235,10 +235,31 @@ def edit(task_id):
     return _render_form("edit", task, task_id)
 
 
-@app.route("/toggle/<task_id>", methods=["POST"])
-def toggle(task_id):
-    done = request.form.get("done") == "on"
-    set_done(task_id, done)
+def _checked_changes(name):
+    """画面から送られた {"id": true/false} を受け取る。形がおかしいものは捨てる"""
+    try:
+        data = json.loads(request.form.get(name) or "{}")
+    except ValueError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {str(k): bool(v) for k, v in data.items()}
+
+
+@app.route("/checks", methods=["POST"])
+def save_checks():
+    # ホームでチェックしたタスクとメモを、まとめて1回で保存する
+    tasks = _checked_changes("tasks")
+    memos = _checked_changes("memos")
+    count = 0
+    if tasks:
+        count += set_tasks_done(tasks)
+    if memos:
+        count += set_memos_done(memos, get_report_date())
+    if count:
+        flash(f"チェックを{count}件保存しました", "success")
+    else:
+        flash("保存するチェックがありませんでした", "error")
     return redirect(url_for("index"))
 
 
@@ -291,20 +312,132 @@ def report_reflection():
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
-    all_settings = get_all_settings()
-    report_date = get_report_date(all_settings)
     if request.method == "POST":
-        set_monthly_goal(report_date, request.form.get("monthly_goal", "").strip())
         set_tomorrow_awareness(request.form.get("tomorrow_awareness", "").strip())
         flash("保存しました", "success")
         return redirect(url_for("settings"))
 
+    return render_template("settings.html", tomorrow_awareness=get_tomorrow_awareness())
+
+
+def _add_month(month, n):
+    total = month.year * 12 + month.month - 1 + n
+    return date(total // 12, total % 12 + 1, 1)
+
+
+def _parse_month(text):
+    try:
+        return datetime.strptime(text or "", "%Y-%m").date()
+    except ValueError:
+        return None
+
+
+def _goal_month_or_none(text, this_month):
+    """URL の月を確かめる。先に進めるのは来月まで"""
+    month = _parse_month(text)
+    if month is None or month > _add_month(this_month, 1):
+        return None
+    return month
+
+
+def _month_status(month, this_month, review):
+    if month > this_month:
+        return "来月"
+    if review:
+        return "振り返り済み"
+    return "今月" if month == this_month else "振り返りまだ"
+
+
+@app.route("/goals")
+def goals():
+    all_settings = get_all_settings()
+    this_month = get_report_date(all_settings).replace(day=1)
+    next_month = _add_month(this_month, 1)
+    month = _goal_month_or_none(request.args.get("month"), this_month) or this_month
+
+    if month == this_month:
+        goal = ensure_monthly_goal_initialized(month, all_settings)
+    else:
+        # 来月でまだ保存していなければ、今月の目標を入れておく（保存するまでは書き込まない）
+        goal = get_monthly_goal(month, all_settings)
+    goal_saved = has_monthly_goal(month, all_settings) or month == this_month
+    review = get_goal_review(month, all_settings)
+
+    # 目標の行ごとに、前に選んだ ⭕️🔺❌ を付ける（目標の文を直した行は未選択に戻る）
+    saved_marks = dict((line, mark) for line, mark in review["marks"]) if review else {}
+    goal_lines = [
+        {"text": line, "mark": saved_marks.get(line, ""), "sub": line.startswith("⭐")}
+        for line in (l.strip() for l in goal.splitlines())
+        if line
+    ]
+
+    months = set(goal_months(all_settings)) | {this_month}
+    months = {m for m in months if m <= next_month}
+    if month == next_month:
+        months.add(next_month)
+    earliest = min(months)
+    history = []
+    for m in sorted(months, reverse=True):
+        r = get_goal_review(m, all_settings)
+        history.append({
+            "key": f"{m:%Y-%m}",
+            "label": f"{m.year}年{m.month}月",
+            "status": _month_status(m, this_month, r),
+            "score": review_score(r) if r else "",
+            "current": m == month,
+        })
+
     return render_template(
-        "settings.html",
-        month_label=f"{report_date.year}年{report_date.month}月",
-        monthly_goal=ensure_monthly_goal_initialized(report_date, all_settings),
-        tomorrow_awareness=get_tomorrow_awareness(all_settings),
+        "goals.html",
+        month_key=f"{month:%Y-%m}",
+        month_label=f"{month.year}年{month.month}月",
+        month_num=month.month,
+        status=_month_status(month, this_month, review),
+        reviewed=review is not None,
+        is_future=month > this_month,
+        is_this_month=month == this_month,
+        goal=goal,
+        goal_saved=goal_saved,
+        goal_lines=goal_lines,
+        comment=review["comment"] if review else "",
+        marks=REVIEW_MARKS,
+        prev_key=f"{_add_month(month, -1):%Y-%m}" if month > earliest else None,
+        next_key=f"{_add_month(month, 1):%Y-%m}" if month < next_month else None,
+        next_num=next_month.month,
+        next_month_key=f"{next_month:%Y-%m}",
+        history=history,
     )
+
+
+@app.route("/goals/<month_key>", methods=["POST"])
+def goals_save(month_key):
+    this_month = get_report_date().replace(day=1)
+    month = _goal_month_or_none(month_key, this_month)
+    if month is None:
+        flash("その月の目標は保存できません", "error")
+        return redirect(url_for("goals"))
+    set_monthly_goal(month, request.form.get("monthly_goal", "").strip())
+    flash(f"{month.month}月の目標を保存しました", "success")
+    return redirect(url_for("goals", month=month_key))
+
+
+@app.route("/goals/<month_key>/review", methods=["POST"])
+def goals_review(month_key):
+    all_settings = get_all_settings()
+    this_month = get_report_date(all_settings).replace(day=1)
+    month = _goal_month_or_none(month_key, this_month)
+    if month is None or month > this_month:
+        flash("まだ始まっていない月は振り返れません", "error")
+        return redirect(url_for("goals"))
+    goal = get_monthly_goal(month, all_settings)
+    lines = [line.strip() for line in goal.splitlines() if line.strip()]
+    marks = []
+    for i, line in enumerate(lines):
+        mark = request.form.get(f"mark_{i}", "")
+        marks.append([line, mark if mark in REVIEW_MARKS else ""])
+    set_goal_review(month, marks, request.form.get("comment", "").strip())
+    flash(f"{month.month}月の振り返りを保存しました", "success")
+    return redirect(url_for("goals", month=month_key) + "#review")
 
 
 @app.route("/report/submit", methods=["POST"])

@@ -194,14 +194,21 @@ def update_memo(memo_id, text):
     return True
 
 
-def set_memo_done(memo_id, done, report_date):
+def set_memos_done(changes, report_date):
+    """{メモのid: チェックしたか} をまとめて保存する。保存できた件数を返す"""
     sheet = memos_sheet()
-    cell = sheet.find(memo_id, in_column=1)
-    if not cell:
-        return False
-    done_on = report_date.isoformat() if done else ""
-    sheet.update(values=[[_bool_str(done), done_on]], range_name=f"D{cell.row}:E{cell.row}")
-    return True
+    id_to_row = {value: i + 1 for i, value in enumerate(sheet.col_values(1)) if i > 0}
+    updates = [
+        {
+            "range": f"D{id_to_row[memo_id]}:E{id_to_row[memo_id]}",
+            "values": [[_bool_str(done), report_date.isoformat() if done else ""]],
+        }
+        for memo_id, done in changes.items()
+        if memo_id in id_to_row
+    ]
+    if updates:
+        sheet.batch_update(updates)
+    return len(updates)
 
 
 def reorder_memos(ordered_ids):
@@ -320,6 +327,58 @@ def ensure_monthly_goal_initialized(report_date, settings=None):
     if previous:
         set_setting(key, previous)
     return previous
+
+
+# ---------- 月ごとの目標と、月末の振り返り ----------
+
+REVIEW_MARKS = {"o": "⭕️", "t": "🔺", "x": "❌"}
+
+
+def _review_key(month):
+    return f"goal_review_{month:%Y-%m}"
+
+
+def goal_months(settings):
+    """目標か振り返りが保存されている月（各月の1日）を古い順に返す"""
+    months = set()
+    for key in settings:
+        for prefix in ("monthly_goal_", "goal_review_"):
+            if key.startswith(prefix):
+                try:
+                    months.add(datetime.strptime(key[len(prefix):], "%Y-%m").date())
+                except ValueError:
+                    pass
+    return sorted(months)
+
+
+def has_monthly_goal(month, settings):
+    return _goal_key(month) in settings
+
+
+def get_goal_review(month, settings):
+    """その月の振り返り。{"marks": [[目標の行, "o"/"t"/"x"/""], ...], "comment": ""}。無ければ None"""
+    raw = settings.get(_review_key(month))
+    if not raw:
+        return None
+    try:
+        review = json.loads(raw)
+    except ValueError:
+        return None
+    return {"marks": review.get("marks") or [], "comment": review.get("comment") or ""}
+
+
+def set_goal_review(month, marks, comment):
+    value = json.dumps({"marks": marks, "comment": comment}, ensure_ascii=False)
+    set_setting(_review_key(month), value)
+
+
+def review_score(review):
+    """一覧に出す「⭕️2 🔺1 ❌1」"""
+    counts = {key: 0 for key in REVIEW_MARKS}
+    for _, mark in review["marks"]:
+        if mark in counts:
+            counts[mark] += 1
+    return " ".join(f"{symbol}{counts[key]}" for key, symbol in REVIEW_MARKS.items())
 
 
 def get_reflection(report_date, settings=None):
@@ -527,13 +586,18 @@ def save_fixed_tasks(entries_by_date):
     return True
 
 
-def set_done(task_id, done):
+def set_tasks_done(changes):
+    """{タスクのid: 完了したか} をまとめて保存する。保存できた件数を返す"""
     sheet = tasks_sheet()
-    cell = sheet.find(task_id, in_column=1)
-    if not cell:
-        return False
-    sheet.update(values=[[_bool_str(done)]], range_name=f"F{cell.row}")
-    return True
+    id_to_row = {value: i + 1 for i, value in enumerate(sheet.col_values(1)) if i > 0}
+    updates = [
+        {"range": f"F{id_to_row[task_id]}", "values": [[_bool_str(done)]]}
+        for task_id, done in changes.items()
+        if task_id in id_to_row
+    ]
+    if updates:
+        sheet.batch_update(updates)
+    return len(updates)
 
 
 def reorder_tasks(ordered_ids):

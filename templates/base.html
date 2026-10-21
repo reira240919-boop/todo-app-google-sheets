@@ -19,8 +19,8 @@
     <h1>毎日やること</h1>
     <nav>
       <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">ホーム</a>
-      <a href="{{ url_for('add') }}" class="{{ 'active' if request.endpoint == 'add' else '' }}">＋追加</a>
       <a href="{{ url_for('report') }}" class="{{ 'active' if request.endpoint == 'report' else '' }}">日報</a>
+      <a href="{{ url_for('goals') }}" class="{{ 'active' if request.endpoint == 'goals' else '' }}">目標</a>
       <a href="{{ url_for('settings') }}" class="{{ 'active' if request.endpoint == 'settings' else '' }}">設定</a>
     </nav>
   </header>
@@ -38,12 +38,24 @@
   </main>
 
   <div id="loading-overlay" class="loading-overlay" hidden>
-    <div class="spinner"></div>
+    <div class="loading-box" role="status" aria-live="polite">
+      <div class="spinner"></div>
+      <p class="loading-text" id="loading-text">通信中…</p>
+    </div>
   </div>
 
   <script>
+    // 通信中は画面の真ん中に「保存中…」などを出して、押せたことがわかるようにする
+    var overlay = document.getElementById("loading-overlay");
+    function showLoading(text) {
+      document.getElementById("loading-text").textContent = text || "通信中…";
+      overlay.hidden = false;
+    }
+    function hideLoading() {
+      overlay.hidden = true;
+    }
+
     (function () {
-      var overlay = document.getElementById("loading-overlay");
 
       document.querySelectorAll("form").forEach(function (form) {
         form.addEventListener("submit", function (e) {
@@ -55,7 +67,7 @@
           if (typeof form.reportValidity === "function" && !form.reportValidity()) {
             return;
           }
-          overlay.hidden = false;
+          showLoading(form.getAttribute("data-loading") || "保存中…");
           var btn = form.querySelector("button[type=submit], button:not([type])");
           if (btn) {
             btn.disabled = true;
@@ -65,10 +77,19 @@
 
       document.querySelectorAll("a[href]").forEach(function (link) {
         link.addEventListener("click", function (e) {
-          if (link.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey) {
+          if (link.target === "_blank" || e.metaKey || e.ctrlKey || e.shiftKey || link.getAttribute("href").charAt(0) === "#") {
             return;
           }
-          overlay.hidden = false;
+          showLoading("読み込み中…");
+        });
+      });
+
+      // 「戻る」で前の画面に戻ったとき、通信中の表示や押せないボタンが残らないようにする
+      window.addEventListener("pageshow", function (e) {
+        if (!e.persisted) return;
+        hideLoading();
+        document.querySelectorAll("form button:disabled").forEach(function (btn) {
+          btn.disabled = false;
         });
       });
     })();
