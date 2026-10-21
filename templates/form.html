@@ -15,8 +15,8 @@
     </fieldset>
 
     <label>
-      <span class="field-label">カテゴリ<span class="required">必須</span></span>
-      <input type="text" name="category" value="{{ task.category }}" required maxlength="50"
+      <span class="field-label">カテゴリ（任意）</span>
+      <input type="text" name="category" value="{{ task.category }}" maxlength="50"
              list="category-options" placeholder="例: 動画編集">
       <datalist id="category-options">
         <option value="動画編集">

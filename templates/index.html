@@ -7,8 +7,10 @@
       <input type="checkbox" data-check="tasks" data-id="{{ task.id }}" {{ "checked" if task.done else "" }} aria-label="完了">
     </span>
     <div class="task-body">
-      <span class="task-category">{{ task.category }}</span>
-      <span class="task-arrow">➡︎</span>
+      {% if task.category %}
+        <span class="task-category">{{ task.category }}</span>
+        <span class="task-arrow">➡︎</span>
+      {% endif %}
       <span class="task-detail">{{ task.detail }}</span>
       {% if task.duration %}<span class="task-duration">（{{ task.duration|hours }}）</span>{% endif %}
     </div>
