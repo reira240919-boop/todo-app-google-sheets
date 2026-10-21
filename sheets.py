@@ -631,11 +631,11 @@ NONE_LINE = "・なし"
 
 
 def format_task_line(task):
-    """日報の1行。X投稿は件数、それ以外は ・カテゴリ➡︎内容（N時間）"""
+    """日報の1行。X投稿は件数、それ以外は ・カテゴリ➡︎内容（N時間）。カテゴリが空なら ・内容（N時間）"""
     detail = task["detail"]
     if task["category"] == COUNT_CATEGORY:
         return f"・{COUNT_CATEGORY}{detail}件" if detail else ""
-    line = f"・{task['category']}➡︎{detail}"
+    line = f"・{task['category']}➡︎{detail}" if task["category"] else f"・{detail}"
     if task["duration"]:
         line += f"（{format_duration(task['duration'])}）"
     return line

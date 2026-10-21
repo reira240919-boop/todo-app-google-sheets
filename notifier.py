@@ -8,7 +8,8 @@ from sheets import format_duration, get_all_tasks, get_report_date, organize_tas
 def _format_line(task):
     mark = "✅ " if task["done"] else ""
     duration = f"（{format_duration(task['duration'])}）" if task["duration"] else ""
-    return f"・{mark}{task['category']}➡︎{task['detail']}{duration}"
+    category = f"{task['category']}➡︎" if task["category"] else ""
+    return f"・{mark}{category}{task['detail']}{duration}"
 
 
 def build_message():

@@ -199,8 +199,8 @@ def save_fixed():
 def add():
     if request.method == "POST":
         data = _form_data()
-        if not data["category"] or not data["detail"]:
-            flash("カテゴリと内容は必須です", "error")
+        if not data["detail"]:
+            flash("内容は必須です", "error")
             return _render_form("add", data)
         add_task(
             data["category"], data["detail"], data["duration"], data["section"], get_report_date(), data["done"]
@@ -218,8 +218,8 @@ def add():
 def edit(task_id):
     if request.method == "POST":
         data = _form_data()
-        if not data["category"] or not data["detail"]:
-            flash("カテゴリと内容は必須です", "error")
+        if not data["detail"]:
+            flash("内容は必須です", "error")
             return _render_form("edit", data, task_id)
         if update_task(task_id, data["category"], data["detail"], data["duration"], data["section"], get_report_date()):
             flash("保存しました", "success")
