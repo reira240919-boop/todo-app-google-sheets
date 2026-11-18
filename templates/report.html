@@ -6,6 +6,18 @@
     <span class="report-date-value">{{ report_date_label }}</span>
   </div>
 
+  {% if submitted %}
+  <section class="day-section">
+    <div class="section-head">
+      <h3 class="section-title">今日提出した日報（{{ submitted.label }}）</h3>
+      <button type="button" class="btn-save" data-copy-target="submitted-text" data-copy-message="submitted-copy-message">もう一度コピー</button>
+    </div>
+    <p class="section-note">間違えて別のものをコピーしたときは、ここからもう一度コピーできます（今日の0時まで）。</p>
+    <p class="copy-message" id="submitted-copy-message" hidden></p>
+    <textarea class="report-text" id="submitted-text" readonly rows="8">{{ submitted.text }}</textarea>
+  </section>
+  {% endif %}
+
   <section class="day-section">
     <div class="section-head">
       <h3 class="section-title">1日の振り返り</h3>
@@ -21,7 +33,7 @@
   <section class="day-section">
     <div class="section-head">
       <h3 class="section-title">日報プレビュー</h3>
-      <button type="button" class="btn-save" id="copy-button">クリップボードにコピー</button>
+      <button type="button" class="btn-save" data-copy-target="report-text" data-copy-message="copy-message">クリップボードにコピー</button>
     </div>
     <p class="copy-message" id="copy-message" hidden></p>
     <textarea class="report-text" id="report-text" readonly rows="24">{{ report_text }}</textarea>
@@ -40,32 +52,35 @@
 {% block scripts %}
   <script>
     (function () {
-      var button = document.getElementById("copy-button");
-      var textarea = document.getElementById("report-text");
-      var message = document.getElementById("copy-message");
+      function setup(button) {
+        var textarea = document.getElementById(button.dataset.copyTarget);
+        var message = document.getElementById(button.dataset.copyMessage);
 
-      function show(text, isError) {
-        message.textContent = text;
-        message.className = "copy-message " + (isError ? "flash flash-error" : "flash flash-success");
-        message.hidden = false;
-      }
-
-      button.addEventListener("click", function () {
-        if (!navigator.clipboard) {
-          textarea.select();
-          show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
-          return;
+        function show(text, isError) {
+          message.textContent = text;
+          message.className = "copy-message " + (isError ? "flash flash-error" : "flash flash-success");
+          message.hidden = false;
         }
-        navigator.clipboard.writeText(textarea.value).then(
-          function () {
-            show("コピーしました", false);
-          },
-          function () {
+
+        button.addEventListener("click", function () {
+          if (!navigator.clipboard) {
             textarea.select();
             show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+            return;
           }
-        );
-      });
+          navigator.clipboard.writeText(textarea.value).then(
+            function () {
+              show("コピーしました", false);
+            },
+            function () {
+              textarea.select();
+              show("自動でコピーできませんでした。選択された文章をそのままコピーしてください。", true);
+            }
+          );
+        });
+      }
+
+      document.querySelectorAll("[data-copy-target]").forEach(setup);
     })();
   </script>
 {% endblock %}

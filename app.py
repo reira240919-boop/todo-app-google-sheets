@@ -21,8 +21,8 @@ from sheets import (
     SECTION_TOMORROW,
     add_memos,
     add_task,
-    build_report_sections,
-    build_report_text,
+    compose_report_text,
+    get_today_submitted_report,
     REVIEW_MARKS,
     ensure_monthly_goal_initialized,
     get_all_settings,
@@ -287,19 +287,13 @@ def report():
     data = read_tabs(SETTINGS_SHEET, TASKS_SHEET)
     settings = get_all_settings(data[SETTINGS_SHEET])
     report_date = get_report_date(settings)
-    sections = build_report_sections(report_date, get_all_tasks(data[TASKS_SHEET]))
-    reflection = get_reflection(report_date, settings)
-    report_text = build_report_text(
-        sections,
-        get_monthly_goal(report_date, settings),
-        reflection,
-        get_tomorrow_awareness(settings),
-    )
+    report_text = compose_report_text(report_date, settings, get_all_tasks(data[TASKS_SHEET]))
     return render_template(
         "report.html",
         report_date_label=_format_date(report_date),
         report_text=report_text,
-        reflection=reflection,
+        reflection=get_reflection(report_date, settings),
+        submitted=get_today_submitted_report(settings),
     )
 
 
