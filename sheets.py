@@ -686,13 +686,45 @@ def build_report_text(sections, monthly_goal, reflection, awareness):
     return "\n".join(parts)
 
 
+def compose_report_text(report_date, settings, tasks):
+    """日報プレビューと同じ本文を作る"""
+    return build_report_text(
+        build_report_sections(report_date, tasks),
+        get_monthly_goal(report_date, settings),
+        get_reflection(report_date, settings),
+        get_tomorrow_awareness(settings),
+    )
+
+
+LAST_SUBMITTED_KEY = "last_submitted_report"
+
+
+def get_today_submitted_report(settings=None):
+    """今日（日本時間）提出した日報があれば {"label", "text"} を返す。日付が変わったら None"""
+    if settings is None:
+        settings = get_all_settings()
+    raw = settings.get(LAST_SUBMITTED_KEY, "")
+    if not raw:
+        return None
+    try:
+        saved = json.loads(raw)
+    except ValueError:
+        return None
+    if saved.get("submitted_on") != datetime.now(JST).date().isoformat():
+        return None
+    return {"label": saved.get("label", ""), "text": saved.get("text", "")}
+
+
 def submit_daily_report():
     """日報を提出して、日報の日を1日進める。新しい report_date を返す。
     途中で失敗したときは report_date を変えない（最後に書き換える）"""
     data = read_tabs(SETTINGS_SHEET, TASKS_SHEET)
-    report_date = get_report_date(get_all_settings(data[SETTINGS_SHEET]))
+    settings = get_all_settings(data[SETTINGS_SHEET])
+    report_date = get_report_date(settings)
     next_date = report_date + timedelta(days=1)
     tasks = get_all_tasks(data[TASKS_SHEET])
+    # 提出した瞬間の本文を残し、その日のうちは日報画面からもう一度コピーできるようにする
+    submitted_text = compose_report_text(report_date, settings, tasks)
 
     today_tasks, _tomorrow, _if_time = organize_tasks(tasks, report_date)
     _fixed, today_others = split_fixed(today_tasks)
@@ -719,6 +751,20 @@ def submit_daily_report():
         tasks_sheet().append_rows(new_rows)
 
     set_setting("report_date", next_date.isoformat())
+    try:
+        set_setting(
+            LAST_SUBMITTED_KEY,
+            json.dumps(
+                {
+                    "submitted_on": datetime.now(JST).date().isoformat(),
+                    "label": f"{report_date.month}/{report_date.day}",
+                    "text": submitted_text,
+                },
+                ensure_ascii=False,
+            ),
+        )
+    except Exception:
+        pass  # 控えの保存に失敗しても提出自体は成功扱いにする
     return next_date
 
 
